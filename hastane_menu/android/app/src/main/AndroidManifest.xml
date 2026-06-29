@@ -1,0 +1,73 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ══════════════════════════════════════════════════════════════════
+         AĞ KAPISI İZİNLERİ — "yalnızca hastane WiFi'ında çalış" kuralı için.
+         Ayrıntı: AGENTS.md §4. ÖNEMLİ: SSID okumak için cihazın Konum
+         Servisleri'nin AÇIK olması gerekir (izin vermek tek başına yetmez).
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- WiFi bağlantı bilgisini okumak (tüm API seviyeleri). Normal izin. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- Android 12+ (API 31+): aktif ağı çözüp SSID/BSSID almak için. Normal izin. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Android 10-12L (API 29-32): SSID/BSSID okuma kapısı (runtime).
+         maxSdkVersion=32 → Android 13+'ta istenmez, yerini NEARBY_WIFI_DEVICES alır. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32" />
+
+    <!-- Android 13+ (API 33+): connection-info okuması için FINE_LOCATION'ın yerini alır.
+         neverForLocation → "WiFi'den konum türetmiyorum" beyanı; salt SSID okumasını kısıtlamaz. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <!-- Intranet erişilebilirlik kontrolü + veri çekme. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="Hastane Menü"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

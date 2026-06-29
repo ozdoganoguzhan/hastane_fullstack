@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- WiFi SSID/BSSID okumak için gereklidir. ⚠️ ÜCRETLİ Apple Developer
+	     Program üyeliği gerektirir. Bu dosyayı Xcode'da Runner target ->
+	     Signing & Capabilities -> "+ Capability" -> "Access WiFi Information"
+	     ile bağlayın (CODE_SIGN_ENTITLEMENTS ayarı). Bağlanmazsa SSID iOS'ta
+	     daima null döner ve uygulama reachability/bağlantı-tipi kontrolüne düşer. -->
+	<key>com.apple.developer.networking.wifi-info</key>
+	<true/>
+</dict>
+</plist>

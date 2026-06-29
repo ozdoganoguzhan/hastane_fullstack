@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* T.C. Sağlık Bakanlığı kırmızısı — hastane marka rengi */
+  --color-brand: #c8102e;
+  --color-brand-dark: #a00d24;
+  --color-brand-foreground: #ffffff;
+}
