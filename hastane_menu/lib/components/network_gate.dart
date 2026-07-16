@@ -38,6 +38,7 @@ class _NetworkGateState extends State<NetworkGate> {
           return const _CheckingScreen();
         case WifiGuardStatus.notWifi:
         case WifiGuardStatus.wrongWifi:
+        case WifiGuardStatus.wrongAccessPoint:
         case WifiGuardStatus.permissionDenied:
         case WifiGuardStatus.locationOff:
           return WifiBlockedScreen(

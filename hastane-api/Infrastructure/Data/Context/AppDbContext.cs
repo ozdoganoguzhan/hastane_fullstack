@@ -46,7 +46,6 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
-    public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<HospitalInfo> HospitalInfos => Set<HospitalInfo>();
 
     protected sealed override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

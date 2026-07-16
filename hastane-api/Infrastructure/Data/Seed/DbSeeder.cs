@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ozi.Application.Infrastructure.Config;
 using Ozi.Domain.Entities;
-using Ozi.Domain.Enums;
 using Ozi.Infrastructure.Data.Context;
 
 namespace Ozi.Infrastructure.Data.Seed;
@@ -53,46 +52,6 @@ public static class DbSeeder
             logger.LogInformation("Varsayılan hastane bilgisi tohumlandı.");
         }
 
-        if (!await db.Announcements.AnyAsync())
-        {
-            db.Announcements.AddRange(SampleAnnouncements());
-            logger.LogInformation("Örnek duyurular tohumlandı.");
-        }
-
         await db.SaveChangesAsync();
-    }
-
-    private static IEnumerable<Announcement> SampleAnnouncements()
-    {
-        (AnnouncementType type, string title, string body, DateTime date)[] items =
-        [
-            (AnnouncementType.Important, "Ramazan Ayı İftar Menüsü",
-                "Ramazan ayı boyunca iftar menüsü 19:00 - 20:30 saatleri arasında sunulacaktır. " +
-                "Nöbetçi personel için sahur paketi hazırlanmaktadır.", new DateTime(2026, 4, 7)),
-            (AnnouncementType.Info, "Diyabet Dostu Menü Seçeneği",
-                "Diyabet hastaları ve personelimiz için özel düşük glisemik indeksli menü seçeneği " +
-                "her gün sunulmaktadır.", new DateTime(2026, 4, 5)),
-            (AnnouncementType.General, "Hijyen Denetimi Tamamlandı",
-                "Yemekhanemiz İl Sağlık Müdürlüğü hijyen denetimini tam puan ile geçmiştir. " +
-                "Gıda güvenliği sertifikamız yenilenmiştir.", new DateTime(2026, 4, 3)),
-            (AnnouncementType.Info, "Cuma Balık Menüsü",
-                "Her Cuma günü taze balık menümüz sunulmaktadır. Balık alerjisi olan personelimiz " +
-                "için alternatif tavuk menüsü mevcuttur.", new DateTime(2026, 4, 1)),
-            (AnnouncementType.Important, "Yemekhane Bakım Çalışması",
-                "19-20 Nisan tarihleri arasında yemekhane havalandırma bakımı yapılacaktır. " +
-                "Bu sürede yemekler paket olarak dağıtılacaktır.", new DateTime(2026, 3, 28)),
-            (AnnouncementType.General, "Personel Memnuniyet Anketi",
-                "Yemekhane hizmet kalitemizi artırmak için memnuniyet anketimize katılımınızı " +
-                "bekliyoruz.", new DateTime(2026, 3, 25)),
-        ];
-
-        return items.Select(i => new Announcement
-        {
-            Type = i.type,
-            Title = i.title,
-            Body = i.body,
-            PublishDate = i.date,
-            IsPublished = true
-        });
     }
 }

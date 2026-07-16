@@ -20,9 +20,11 @@ class CenterNavButton {
   final VoidCallback onTap;
 }
 
-/// Alt navigasyon çubuğu — 4 sekme + ortada vurgulu bir eylem butonu.
+/// Alt navigasyon çubuğu — 3 sekme + ortada vurgulu bir eylem butonu.
 ///
-/// Dizilim: tab0 · tab1 · [orta buton] · tab2 · tab3
+/// Dizilim: tab0 · tab1 · [orta buton] · tab2
+/// Orta butonun tam ortada (%50) kalması için sağdaki sekmeye çift genişlik
+/// verilir: flex 1 + 1 + 1(boşluk) + 2 → boşluğun merkezi %50'dir.
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
     super.key,
@@ -39,7 +41,7 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    assert(tabs.length == 4, 'BottomNavBar tam 4 sekme bekler.');
+    assert(tabs.length == 3, 'BottomNavBar tam 3 sekme bekler.');
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.white,
@@ -65,9 +67,9 @@ class BottomNavBar extends StatelessWidget {
                 children: [
                   _tab(0),
                   _tab(1),
+                  // Orta butonun oturduğu boşluk (merkezi %50).
                   const Expanded(child: SizedBox.shrink()),
-                  _tab(2),
-                  _tab(3),
+                  _tab(2, flex: 2),
                 ],
               ),
               // Orta buton bar'ın üstüne taşar — "yapıştırılmış" görünüm.
@@ -82,7 +84,8 @@ class BottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _tab(int i) => Expanded(
+  Widget _tab(int i, {int flex = 1}) => Expanded(
+    flex: flex,
     child: _NavItem(
       tab: tabs[i],
       selected: i == currentIndex,

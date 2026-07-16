@@ -1,39 +1,28 @@
-import 'package:hastane_menu/core/constants/app_config.dart';
-import 'package:hastane_menu/core/state/session_state.dart';
-import 'package:hastane_menu/core/state/state_manager.dart';
+import 'package:hastane_menu/core/cache/sliding_cache.dart';
+import 'package:hastane_menu/core/network/hbys_client.dart';
 import 'package:hastane_menu/core/utils/date_utils.dart';
-import 'package:hastane_menu/data/menu_repository.dart';
+import 'package:hastane_menu/data/dto/hbys_menu_dto.dart';
 import 'package:hastane_menu/models/menu_models.dart';
 
 /// Menü erişiminde tek giriş noktası — UI buradan veri ister.
 ///
-/// Ay bazında **cache** tutar (aynı ay tekrar tekrar ağdan çekilmez) ve aktif
-/// kaynağı oturuma + config'e göre seçer:
-///  - demo oturum (`isDemo`) **veya** [AppConfig.useRemoteApi] kapalı → dummy,
-///  - aksi hâlde → kendi REST API'miz (remote).
+/// Veri **doğrudan Turkcell HBYS**'den gelir (araya bizim API'miz girmez).
+/// Ay bazında 10 dakikalık **kayan süreli bellek önbelleği** tutar; böylece
+/// her ekran açılışında HBYS'ye istek atılmaz (bkz. [SlidingCache]).
 class MenuService {
-  MenuService({required this.dummy, required this.remote});
+  MenuService({required HbysClient client, SlidingCache<String, List<DailyMenu>>? cache})
+    : _client = client,
+      _cache = cache ?? SlidingCache<String, List<DailyMenu>>();
 
-  final MenuRepository dummy;
-  final MenuRepository remote;
+  final HbysClient _client;
+  final SlidingCache<String, List<DailyMenu>> _cache;
 
-  final Map<String, List<DailyMenu>> _cache = {};
-
-  bool get _useDummy {
-    final isDemo = $get<SessionState>().current?.isDemo ?? true;
-    return isDemo || !AppConfig.useRemoteApi;
-  }
-
-  MenuRepository get _repo => _useDummy ? dummy : remote;
-
-  /// Belirli ayın menüleri (cache'li).
-  Future<List<DailyMenu>> month(int year, int month) async {
-    final key = '${_useDummy ? 'd' : 'r'}-$year-$month';
-    final cached = _cache[key];
-    if (cached != null) return cached;
-    final list = await _repo.monthlyMenu(year, month);
-    _cache[key] = list;
-    return list;
+  /// Belirli ayın menüleri (önbellekli).
+  Future<List<DailyMenu>> month(int year, int month) {
+    return _cache.getOrLoad('$year-$month', () async {
+      final json = await _client.monthlyMenu(year, month);
+      return HbysMenuDto.listFromResponse(json);
+    });
   }
 
   /// Tek bir günün menüsü (kayıt yoksa boş gün).
@@ -46,7 +35,7 @@ class MenuService {
   }
 
   /// [monday]'den itibaren Pazartesi..Cuma haftası. Hafta iki aya yayılıyorsa
-  /// her iki ay da (cache üzerinden) yüklenir. Eksik günler boş döner.
+  /// her iki ay da (önbellek üzerinden) yüklenir. Eksik günler boş döner.
   Future<List<DailyMenu>> week(DateTime monday) async {
     final days = List.generate(
       5,
@@ -65,6 +54,6 @@ class MenuService {
     }).toList(growable: false);
   }
 
-  /// Önbelleği temizler (örn. oturum değişiminde).
+  /// Önbelleği temizler (örn. oturum değişiminde / manuel yenilemede).
   void clearCache() => _cache.clear();
 }

@@ -99,6 +99,7 @@ class WifiBlockedScreen extends StatelessWidget {
   String get _title => switch (status) {
     WifiGuardStatus.notWifi => 'Hastane Wi-Fi ağına bağlı değilsiniz',
     WifiGuardStatus.wrongWifi => 'Yanlış Wi-Fi ağındasınız',
+    WifiGuardStatus.wrongAccessPoint => 'Hastane erişim noktasında değilsiniz',
     WifiGuardStatus.permissionDenied => 'Konum izni gerekiyor',
     WifiGuardStatus.locationOff => 'Konum servisleri kapalı',
     _ => 'Bağlantı kontrol ediliyor',
@@ -111,6 +112,9 @@ class WifiBlockedScreen extends StatelessWidget {
     WifiGuardStatus.wrongWifi =>
       'Bu uygulama yalnızca hastane Wi-Fi ağına bağlıyken çalışır. '
           'Lütfen doğru ağa bağlandığınızdan emin olun.',
+    WifiGuardStatus.wrongAccessPoint =>
+      'Ağ adı doğru görünüyor ancak bağlı olduğunuz erişim noktası hastaneye '
+          'ait değil. Lütfen hastane içindeki resmi Wi-Fi noktasına bağlanın.',
     WifiGuardStatus.permissionDenied =>
       'Bağlı olduğunuz ağın adını doğrulayabilmemiz için konum iznine '
           'ihtiyacımız var. Lütfen izni verin.',
@@ -121,7 +125,9 @@ class WifiBlockedScreen extends StatelessWidget {
   };
 
   _SecondaryAction? get _secondaryAction => switch (status) {
-    WifiGuardStatus.notWifi || WifiGuardStatus.wrongWifi => _SecondaryAction(
+    WifiGuardStatus.notWifi ||
+    WifiGuardStatus.wrongWifi ||
+    WifiGuardStatus.wrongAccessPoint => _SecondaryAction(
       label: 'Wi-Fi ayarlarını aç',
       onPressed: () => AppSettings.openAppSettings(type: AppSettingsType.wifi),
     ),

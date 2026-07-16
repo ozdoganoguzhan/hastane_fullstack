@@ -6,26 +6,14 @@ import 'package:hastane_menu/components/async_status.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
-import 'package:hastane_menu/core/state/state_manager.dart';
-import 'package:hastane_menu/data/hospital_info_service.dart';
 import 'package:hastane_menu/models/hospital_info.dart';
 
 /// Yemekhane bilgileri sayfası (çalışma saatleri, konum, iletişim).
-/// Veri kaynağı [HospitalInfoService] (dummy/remote).
-class InfoPage extends StatefulWidget {
+///
+/// Veri kaynağı [AppConfig]'tir: Turkcell HBYS dokümanında hastane bilgisi ucu
+/// yoktur ve yönetici paneli kaldırılmıştır → tek merkez config'tir.
+class InfoPage extends StatelessWidget {
   const InfoPage({super.key});
-
-  @override
-  State<InfoPage> createState() => _InfoPageState();
-}
-
-class _InfoPageState extends State<InfoPage> {
-  final HospitalInfoService _service = $get<HospitalInfoService>();
-  late Future<HospitalInfo> _future = _service.get();
-
-  void _reload() {
-    setState(() => _future = _service.get(forceRefresh: true));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,22 +28,7 @@ class _InfoPageState extends State<InfoPage> {
               style: AppTypography.headingLarge,
             ),
           ),
-          FutureBuilder<HospitalInfo>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const MenuLoadingCard(height: 220);
-              }
-              if (snapshot.hasError) {
-                return MenuErrorCard(
-                  title: 'Bilgiler yüklenemedi',
-                  message: '${snapshot.error}',
-                  onRetry: _reload,
-                );
-              }
-              return _InfoCard(info: snapshot.data ?? HospitalInfo.fromConfig());
-            },
-          ),
+          _InfoCard(info: HospitalInfo.fromConfig()),
           AppSpacing.gapV16,
           const _NetworkDebugCard(),
         ],

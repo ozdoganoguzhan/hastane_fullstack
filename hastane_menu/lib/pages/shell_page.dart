@@ -4,12 +4,11 @@ import 'package:hastane_menu/components/login_sheet.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/state/session_state.dart';
 import 'package:hastane_menu/core/state/state_manager.dart';
-import 'package:hastane_menu/pages/announcements_page.dart';
 import 'package:hastane_menu/pages/home_page.dart';
 import 'package:hastane_menu/pages/info_page.dart';
 import 'package:hastane_menu/pages/menu_page.dart';
 
-/// Alt navigasyonlu ana iskelet. 4 sayfayı IndexedStack ile barındırır.
+/// Alt navigasyonlu ana iskelet. 3 sayfayı IndexedStack ile barındırır.
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
 
@@ -24,7 +23,6 @@ class _ShellPageState extends State<ShellPage> {
   static const _tabs = [
     NavTab(icon: Icons.home_rounded, label: 'Ana Sayfa'),
     NavTab(icon: Icons.calendar_month_rounded, label: 'Menü'),
-    NavTab(icon: Icons.campaign_rounded, label: 'Duyurular'),
     NavTab(icon: Icons.info_rounded, label: 'Bilgi'),
   ];
 
@@ -39,7 +37,6 @@ class _ShellPageState extends State<ShellPage> {
         children: [
           HomePage(onNavigate: _goTo),
           const MenuPage(),
-          const AnnouncementsPage(),
           const InfoPage(),
         ],
       ),

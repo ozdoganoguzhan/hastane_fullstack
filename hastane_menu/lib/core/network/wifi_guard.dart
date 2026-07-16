@@ -20,6 +20,9 @@ enum WifiGuardStatus {
   /// WiFi var ama SSID izinli değil ve intranet host'a ulaşılamıyor.
   wrongWifi,
 
+  /// SSID doğru ama bağlı olunan erişim noktası (AP/BSSID) hastaneye ait değil.
+  wrongAccessPoint,
+
   /// Mobil veri / kablolu / hiç bağlantı yok.
   notWifi,
 
@@ -69,6 +72,11 @@ class WifiGuard implements IDisposable {
     if (AppConfig.enforceSsid) {
       final ssid = _stripQuotes(await _safe(() => _netInfo.getWifiName()));
       if (!_isUnknownSsid(ssid) && _isAllowed(ssid!)) {
+        // 2b) SSID taklit edilebilir → bağlı AP'nin MAC (BSSID) öneki de
+        //     hastanenin erişim noktaları listesinde olmalı.
+        final bssidResult = await _checkAccessPoint();
+        if (bssidResult != null) return bssidResult;
+
         return WifiGuardStatus.onAllowedWifi;
       }
 
@@ -107,6 +115,42 @@ class WifiGuard implements IDisposable {
         .map((s) => s.toLowerCase().trim())
         .contains(target);
   }
+
+  /// Bağlı olunan erişim noktasının (AP) MAC/BSSID öneki hastaneye ait mi?
+  ///
+  /// SSID taklit edilebildiği için (telefon hotspot'u, ucuz router) asıl kanıt
+  /// budur: BSSID'in ilk 6 hanesi (OUI) hastane AP'lerinin listesinde olmalı.
+  ///
+  /// Dönüş: `null` → sorun yok / kontrol atlandı, aksi hâlde engelleme durumu.
+  Future<WifiGuardStatus?> _checkAccessPoint() async {
+    if (!AppConfig.enforceBssid || AppConfig.allowedBssidPrefixes.isEmpty) {
+      return null;
+    }
+
+    final bssid = _normalizeMac(await _safe(() => _netInfo.getWifiBSSID()));
+
+    // BSSID okunamadıysa (iOS entitlement yok / izin verilmedi / OS maskeledi)
+    // SSID kararına güven — kullanıcıyı yanlışlıkla dışarıda bırakma.
+    if (bssid == null || bssid.length < 6 || _isMaskedMac(bssid)) return null;
+
+    final allowed = AppConfig.allowedBssidPrefixes
+        .map(_normalizeMac)
+        .whereType<String>()
+        .any(bssid.startsWith);
+
+    return allowed ? null : WifiGuardStatus.wrongAccessPoint;
+  }
+
+  /// "04:ca:ed:11:22:33" · "04-CA-ED-11-22-33" · "04caed" → "04caed112233"
+  String? _normalizeMac(String? raw) {
+    if (raw == null) return null;
+    final cleaned = raw.toLowerCase().replaceAll(RegExp('[^0-9a-f]'), '');
+    return cleaned.isEmpty ? null : cleaned;
+  }
+
+  /// İzin yokken Android sahte BSSID döndürür (02:00:00:00:00:00 / tüm sıfır).
+  bool _isMaskedMac(String mac) =>
+      mac == '020000000000' || mac == '000000000000';
 
   /// Android'de SSID OS tarafından çift tırnakla sarılabilir; eşleşen çifti soy.
   String? _stripQuotes(String? ssid) {

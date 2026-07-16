@@ -8,18 +8,23 @@ using Ozi.Application.EventHandling;
 using Ozi.Application.Infrastructure.ApplicationContext;
 using Ozi.Application.Infrastructure.Config;
 using Ozi.Domain.Entities;
-using Ozi.Domain.Events;
-using Ozi.Features.Announcements;
 using Ozi.Features.Auth;
+using Ozi.Features.HbysMock;
 using Ozi.Features.HospitalInfo;
 using Ozi.Features.Menu;
+using Ozi.Features.Otp;
 using Ozi.Features.Personnel;
 using Ozi.Infrastructure.Data.Context;
 using Ozi.Infrastructure.Data.Seed;
 using Ozi.Infrastructure.Integration.Hbys;
+using Ozi.Infrastructure.Integration.Sms;
 using Ozi.Infrastructure.Security;
 using Ozi.Infrastructure.Web;
 using Scalar.AspNetCore;
+
+// 3G Bilişim SMS gateway'i yanıtlarını ISO-8859-9 (Latin-5) ile döner; .NET Core
+// bu kod sayfasını yalnızca bu sağlayıcı kayıtlıysa tanır.
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,12 +34,12 @@ var appSettings = builder.Configuration.GetSection(OziAppSettings.SectionName).G
 builder.Services.AddSingleton(appSettings);
 builder.Services.AddSingleton(appSettings.Jwt);
 builder.Services.AddSingleton(appSettings.Hbys);
+builder.Services.AddSingleton(appSettings.Sms);
 
 // ── İstek bağlamı + alan olayları (domain events) ────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IApplicationContext, HttpApplicationContext>();
 builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
-builder.Services.AddScoped<IDomainEventHandler<AnnouncementPublishedDomainEvent>, AnnouncementPublishedLogHandler>();
 
 // ── Veritabanı (sağlayıcı OnConfiguring içinde OziAppSettings'ten seçilir) ────
 builder.Services.AddDbContext<AppDbContext>();
@@ -71,6 +76,17 @@ builder.Services.AddHttpClient(HbysClient.HttpClientName, client =>
 builder.Services.AddSingleton<HbysTokenProvider>();
 builder.Services.AddScoped<HbysClient>();
 
+// Turkcell HBYS'nin birebir mock'u (DB'ye gitmez) — mobil uygulama canlıda
+// doğrudan Turkcell'e, geliştirmede bu mock'a bağlanır. Bkz. Features/HbysMock.
+builder.Services.AddSingleton<HbysMockTokenStore>();
+
+// ── SMS / OTP (3G Bilişim) ───────────────────────────────────────────────────
+// Turkcell HBYS'de SMS servisi olmadığı için OTP akışını bu backend sağlar.
+builder.Services.AddHttpClient(Bilisim3GSmsSender.HttpClientName, client =>
+    client.Timeout = TimeSpan.FromSeconds(appSettings.Sms.TimeoutSeconds));
+builder.Services.AddSingleton<ISmsSender, Bilisim3GSmsSender>();
+builder.Services.AddSingleton<OtpStore>();
+
 // ── JSON / hata / OpenAPI ────────────────────────────────────────────────────
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -101,8 +117,13 @@ app.MapScalarApiReference(); // /scalar
 app.MapGet("/health", () => Results.Ok(new { status = "ok", time = DateTime.UtcNow }))
    .WithTags("System");
 
+// ⭐ Turkcell HBYS dokümanı ile BİREBİR mock uçları (mobil uygulama bunları kullanır).
+app.MapHbysMockEndpoints();
+
+// SMS ile doğrulama (OTP) — mobil giriş akışı bunu kullanır.
+app.MapOtpEndpoints();
+
 app.MapAuthEndpoints();
-app.MapAnnouncementEndpoints();
 app.MapHospitalInfoEndpoints();
 app.MapMenuEndpoints();
 app.MapPersonnelEndpoints();

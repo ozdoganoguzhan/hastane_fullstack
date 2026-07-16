@@ -1,56 +1,94 @@
+import 'package:hastane_menu/core/network/hbys_client.dart';
+import 'package:hastane_menu/core/network/otp_client.dart';
 import 'package:hastane_menu/models/staff_session.dart';
 
-/// 2FA giriş akışını yöneten servis.
+/// Giriş akışını yöneten servis.
 ///
-/// ⚠️ ŞİMDİLİK DUMMY: gerçek SMS/OTP servisi ve personel API'si bağlanmadı.
-/// Akış netleştiğinde [requestOtp] gerçek SMS gönderimine, [verifyOtp] gerçek
-/// doğrulama + personel-bilgisi çekme endpoint'ine bağlanacaktır.
+/// İki kaynak konuşur:
+///  • **OTP (SMS)** → kendi backend'imiz (3G Bilişim) — Turkcell'de SMS ucu yok.
+///  • **Personel kartı** → DOĞRUDAN Turkcell HBYS. Dummy personel verisi yoktur.
 class AuthService {
-  /// Telefona 6 haneli kod gönderir (dummy: sadece bekler).
+  AuthService({required HbysClient client, OtpClient otpClient = const OtpClient()})
+    : _client = client,
+      _otp = otpClient;
+
+  final HbysClient _client;
+  final OtpClient _otp;
+
+  /// Telefona 6 haneli kod gönderir (backend SMS gönderir).
   Future<void> requestOtp(String phone) async {
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    final digits = _digits(phone);
     if (digits.length < 10) {
       throw const AuthException('Geçerli bir telefon numarası girin.');
     }
-    // TODO: gerçek SMS servisini çağır.
+
+    try {
+      await _otp.requestCode(digits.substring(digits.length - 10));
+    } on OtpException catch (e) {
+      throw AuthException(e.message);
+    }
   }
 
-  /// Kodu doğrular ve personel oturumunu döner (dummy: 6 hane kabul eder).
+  /// Kodu backend'de doğrular, ardından **HBYS'den personel kartını** çeker.
   Future<StaffSession> verifyOtp({
     required String phone,
     required String code,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 900));
     if (code.length != 6) {
       throw const AuthException('Doğrulama kodu 6 haneli olmalıdır.');
     }
-    // TODO: gerçek doğrulama API'sini çağır; personel bilgisi response'tan gelsin.
-    final digits = phone.replaceAll(RegExp(r'\D'), '');
-    final suffix = digits.substring(digits.length - 6);
-    // TODO(§15): personel kartı servisinden (get-personel-karti-by-cep-tel)
-    // adiSoyadi + personelKartNo (cardNo) gelsin — sabit string DEĞİL.
+
+    final digits = _digits(phone);
+    if (digits.length < 10) {
+      throw const AuthException('Geçerli bir telefon numarası girin.');
+    }
+    final cepTel = digits.substring(digits.length - 10);
+
+    // 1) SMS kodunu doğrula (kendi backend'imiz).
+    try {
+      await _otp.verifyCode(cepTel, code);
+    } on OtpException catch (e) {
+      throw AuthException(e.message);
+    }
+
+    // 2) Personel kartını Turkcell HBYS'den çek (doküman: cepTel 10 hane).
+    final Map<String, dynamic> response;
+    try {
+      response = await _client.personnelByPhone(cepTel);
+    } on HbysException catch (e) {
+      throw AuthException(e.message);
+    }
+
+    if (response['present'] != true || response['data'] is! Map) {
+      throw const AuthException('Bu numaraya kayıtlı personel bulunamadı.');
+    }
+
+    final data = response['data'] as Map;
+    final cardNo = (data['personelKartNo'] as String?)?.trim() ?? '';
+    final fullName = (data['adiSoyadi'] as String?)?.trim() ?? '';
+
+    if (cardNo.isEmpty) {
+      throw const AuthException('Personel kart numarası alınamadı.');
+    }
+
     return StaffSession(
-      personnelId: 'ESH-PER-$suffix',
-      fullName: 'Hastane Personeli',
+      personnelId: cardNo,
+      fullName: fullName.isEmpty ? 'Hastane Personeli' : fullName,
       title: 'Yemekhane Erişimi',
       phone: phone,
-      cardNo: '90$suffix',
+      cardNo: cardNo,
     );
   }
 
-  /// Kullanıcı adı + şifre ile **demo** girişi.
+  /// Kullanıcı adı + şifre ile **demo** girişi (yalnızca geliştirme/sunum).
   ///
-  /// ⚠️ DUMMY: yalnızca `test` / `12345` kabul edilir. Başarılı olursa
-  /// [StaffSession.isDemo] `true` olan bir oturum döner — bu oturumda gerçek
-  /// API'ye gidilmez, tüm içerik `lib/data/` dummy kaynaklarından gösterilir.
-  /// Gerçek API geldiğinde bu metot personel kimlik-doğrulama endpoint'ine
-  /// bağlanır (demo kullanıcı yalnızca geliştirme için tutulabilir).
+  /// ⚠️ Kalan tek dummy budur: `test` / `12345`. Canlıya çıkarken kaldırılabilir
+  /// (giriş ekranındaki "Kullanıcı Adı" sekmesiyle birlikte).
   Future<StaffSession> loginWithCredentials({
     required String username,
     required String password,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     if (username.trim().toLowerCase() == 'test' && password == '12345') {
       return const StaffSession(
         personnelId: 'DEMO-0001',
@@ -62,6 +100,8 @@ class AuthService {
     }
     throw const AuthException('Kullanıcı adı veya şifre hatalı.');
   }
+
+  static String _digits(String value) => value.replaceAll(RegExp(r'\D'), '');
 }
 
 /// Giriş akışı hataları.

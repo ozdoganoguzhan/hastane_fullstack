@@ -1,8 +1,9 @@
 import 'package:hastane_menu/core/constants/app_config.dart';
 
-/// Yemekhane / hastane bilgisi (Bilgi sayfası). Panel'den girilir, mobil
-/// `GET /hospital-info` ile çeker. Backend yokken [HospitalInfo.fromConfig]
-/// AppConfig sabitlerinden üretilir.
+/// Yemekhane / hastane bilgisi (Bilgi sayfası).
+///
+/// ⚠️ Turkcell HBYS dokümanında hastane bilgisi ucu YOKTUR ve yönetici paneli
+/// kaldırılmıştır → bu bilgiler tamamen [AppConfig]'ten gelir (tek merkez).
 class HospitalInfo {
   const HospitalInfo({
     required this.hospitalName,
@@ -20,34 +21,13 @@ class HospitalInfo {
   final String location;
   final String contact;
 
-  static const String _defaultDescription =
-      'Yemekhanemiz hafta içi her gün personelimize hijyenik ve dengeli '
-      'beslenme imkânı sunar. Menüler diyetisyen kontrolünde hazırlanmaktadır.';
-
-  /// Backend yokken (dummy/demo) AppConfig'ten üretilen varsayılan bilgi.
+  /// Config'ten üretilen tek kaynak.
   factory HospitalInfo.fromConfig() => const HospitalInfo(
     hospitalName: AppConfig.hospitalName,
     subtitle: AppConfig.appSubtitle,
-    description: _defaultDescription,
+    description: AppConfig.cafeteriaDescription,
     workingHours: AppConfig.workingHours,
     location: AppConfig.location,
     contact: AppConfig.contact,
   );
-
-  /// `GET /hospital-info` yanıtı. Boş alanlar AppConfig varsayılanına düşer.
-  factory HospitalInfo.fromJson(Map<String, dynamic> json) {
-    String pick(String key, String fallback) {
-      final value = json[key];
-      return value is String && value.trim().isNotEmpty ? value.trim() : fallback;
-    }
-
-    return HospitalInfo(
-      hospitalName: pick('hospitalName', AppConfig.hospitalName),
-      subtitle: pick('subtitle', AppConfig.appSubtitle),
-      description: pick('description', _defaultDescription),
-      workingHours: pick('workingHours', AppConfig.workingHours),
-      location: pick('location', AppConfig.location),
-      contact: pick('contact', AppConfig.contact),
-    );
-  }
 }
