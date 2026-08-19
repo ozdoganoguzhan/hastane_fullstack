@@ -11,23 +11,28 @@
     <!-- Android 12+ (API 31+): aktif ağı çözüp SSID/BSSID almak için. Normal izin. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Android 10-12L (API 29-32): SSID/BSSID okuma kapısı (runtime).
-         maxSdkVersion=32 → Android 13+'ta istenmez, yerini NEARBY_WIFI_DEVICES alır. -->
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="32" />
+    <!-- Bağlı ağın SSID/BSSID'i (WifiManager.getConnectionInfo) HER API
+         seviyesinde ACCESS_FINE_LOCATION ister — Android 13+ dahil.
+         NEARBY_WIFI_DEVICES bunun yerini GEÇMEZ; ek olarak istenir.
+         maxSdkVersion KOYULMAZ: 33+'ta kaldırılırsa getWifiName() kalıcı
+         olarak <unknown ssid> döner ve kapı hiçbir zaman açılmaz. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Android 13+ (API 33+): connection-info okuması için FINE_LOCATION'ın yerini alır.
-         neverForLocation → "WiFi'den konum türetmiyorum" beyanı; salt SSID okumasını kısıtlamaz. -->
-    <uses-permission
-        android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation" />
+    <!-- Android 13+ (API 33+): connection-info (SSID/BSSID) okumasında
+         ACCESS_FINE_LOCATION'a EK OLARAK istenir (yerine geçmez).
+
+         ⚠️ `neverForLocation` BİLEREK KULLANILMIYOR: bu uygulama WiFi bilgisini
+         "kullanıcı fiziksel olarak hastanede mi?" sorusunu yanıtlamak için, yani
+         KONUM ÇIKARIMI amacıyla kullanır. Bu bayrak "WiFi'den konum türetmiyorum"
+         beyanıdır ve bizim için YANLIŞ beyan olurdu (Play Store politikası).
+         Kaynak: developer.android.com/develop/connectivity/wifi/wifi-permissions -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
     <!-- Intranet erişilebilirlik kontrolü + veri çekme. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="Hastane Menü"
+        android:label="Eskişehir Şehir Hastanesi Menü"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

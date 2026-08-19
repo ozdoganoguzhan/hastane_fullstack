@@ -12,19 +12,13 @@ using Ozi.Features.Auth;
 using Ozi.Features.HbysMock;
 using Ozi.Features.HospitalInfo;
 using Ozi.Features.Menu;
-using Ozi.Features.Otp;
 using Ozi.Features.Personnel;
 using Ozi.Infrastructure.Data.Context;
 using Ozi.Infrastructure.Data.Seed;
 using Ozi.Infrastructure.Integration.Hbys;
-using Ozi.Infrastructure.Integration.Sms;
 using Ozi.Infrastructure.Security;
 using Ozi.Infrastructure.Web;
 using Scalar.AspNetCore;
-
-// 3G Bilişim SMS gateway'i yanıtlarını ISO-8859-9 (Latin-5) ile döner; .NET Core
-// bu kod sayfasını yalnızca bu sağlayıcı kayıtlıysa tanır.
-Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +28,6 @@ var appSettings = builder.Configuration.GetSection(OziAppSettings.SectionName).G
 builder.Services.AddSingleton(appSettings);
 builder.Services.AddSingleton(appSettings.Jwt);
 builder.Services.AddSingleton(appSettings.Hbys);
-builder.Services.AddSingleton(appSettings.Sms);
 
 // ── İstek bağlamı + alan olayları (domain events) ────────────────────────────
 builder.Services.AddHttpContextAccessor();
@@ -80,12 +73,8 @@ builder.Services.AddScoped<HbysClient>();
 // doğrudan Turkcell'e, geliştirmede bu mock'a bağlanır. Bkz. Features/HbysMock.
 builder.Services.AddSingleton<HbysMockTokenStore>();
 
-// ── SMS / OTP (3G Bilişim) ───────────────────────────────────────────────────
-// Turkcell HBYS'de SMS servisi olmadığı için OTP akışını bu backend sağlar.
-builder.Services.AddHttpClient(Bilisim3GSmsSender.HttpClientName, client =>
-    client.Timeout = TimeSpan.FromSeconds(appSettings.Sms.TimeoutSeconds));
-builder.Services.AddSingleton<ISmsSender, Bilisim3GSmsSender>();
-builder.Services.AddSingleton<OtpStore>();
+// NOT: SMS/OTP burada YOKTUR. Canlıda aracı API olmadığı için doğrulama kodu
+// üretimi ve SMS gönderimi tamamen mobil uygulamadadır (bkz. sms_client.dart).
 
 // ── JSON / hata / OpenAPI ────────────────────────────────────────────────────
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -119,9 +108,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", time = DateTime.UtcN
 
 // ⭐ Turkcell HBYS dokümanı ile BİREBİR mock uçları (mobil uygulama bunları kullanır).
 app.MapHbysMockEndpoints();
-
-// SMS ile doğrulama (OTP) — mobil giriş akışı bunu kullanır.
-app.MapOtpEndpoints();
 
 app.MapAuthEndpoints();
 app.MapHospitalInfoEndpoints();

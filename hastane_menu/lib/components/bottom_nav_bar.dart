@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hastane_menu/components/pressable.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
+import 'package:hastane_menu/core/constants/app_spacing.dart';
 
 /// Alt navigasyon sekmesi tanımı.
 class NavTab {
@@ -8,7 +10,7 @@ class NavTab {
   final String label;
 }
 
-/// Ortadaki yükseltilmiş eylem butonu tanımı (Giriş / QR).
+/// QR eylem butonu tanımı (Giriş / QR).
 class CenterNavButton {
   const CenterNavButton({
     required this.icon,
@@ -20,11 +22,13 @@ class CenterNavButton {
   final VoidCallback onTap;
 }
 
-/// Alt navigasyon çubuğu — 3 sekme + ortada vurgulu bir eylem butonu.
+/// Yüzen alt navigasyon çubuğu — **4 eşit slot**, tam simetrik:
 ///
-/// Dizilim: tab0 · tab1 · [orta buton] · tab2
-/// Orta butonun tam ortada (%50) kalması için sağdaki sekmeye çift genişlik
-/// verilir: flex 1 + 1 + 1(boşluk) + 2 → boşluğun merkezi %50'dir.
+/// `[Ana Sayfa] [Menü] [QR] [Bilgi]`
+///
+/// QR bir sekme değil eylemdir; degrade daire rozetiyle vurgulanır ama diğer
+/// slotlarla aynı ritimde hizalanır. Bar, kenarlardan boşluklu "yüzen hap"
+/// biçimindedir.
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
     super.key,
@@ -39,44 +43,34 @@ class BottomNavBar extends StatelessWidget {
   final ValueChanged<int> onTap;
   final CenterNavButton center;
 
+  /// İkon alanlarının ortak yüksekliği — etiketler tek hizada durur.
+  static const double _iconZone = 36;
+
   @override
   Widget build(BuildContext context) {
     assert(tabs.length == 3, 'BottomNavBar tam 3 sekme bekler.');
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 20,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        child: Container(
           height: 68,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.topCenter,
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppSpacing.radiusXxl),
+            ),
+            border: Border.fromBorderSide(
+              BorderSide(color: AppColors.divider),
+            ),
+            boxShadow: AppSpacing.shadowLg,
+          ),
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _tab(0),
-                  _tab(1),
-                  // Orta butonun oturduğu boşluk (merkezi %50).
-                  const Expanded(child: SizedBox.shrink()),
-                  _tab(2, flex: 2),
-                ],
-              ),
-              // Orta buton bar'ın üstüne taşar — "yapıştırılmış" görünüm.
-              Positioned(
-                top: -26,
-                child: _CenterButton(config: center),
-              ),
+              _tab(0),
+              _tab(1),
+              Expanded(child: _QrItem(config: center)),
+              _tab(2),
             ],
           ),
         ),
@@ -84,8 +78,7 @@ class BottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _tab(int i, {int flex = 1}) => Expanded(
-    flex: flex,
+  Widget _tab(int i) => Expanded(
     child: _NavItem(
       tab: tabs[i],
       selected: i == currentIndex,
@@ -107,21 +100,47 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.red : AppColors.textMuted;
-    return InkWell(
+    final Color color = selected ? AppColors.red : AppColors.textMuted;
+    return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(tab.icon, size: 22, color: color),
-          const SizedBox(height: 3),
-          Text(
-            tab.label,
+          // Aktif sekmede ikonun arkasında yumuşak kırmızı hap belirir.
+          SizedBox(
+            height: BottomNavBar._iconZone,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.redSoft : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+                ),
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  scale: selected ? 1.05 : 1,
+                  child: Icon(tab.icon, size: 22, color: color),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
             style: TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w700,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
               color: color,
+              letterSpacing: 0.1,
             ),
+            child: Text(tab.label),
           ),
         ],
       ),
@@ -129,42 +148,42 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _CenterButton extends StatelessWidget {
-  const _CenterButton({required this.config});
+/// QR eylem slotu — degrade daire rozet, sekmelerle aynı dikey ritimde.
+class _QrItem extends StatelessWidget {
+  const _QrItem({required this.config});
   final CenterNavButton config;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: config.onTap,
-      behavior: HitTestBehavior.opaque,
+      pressedScale: 0.92,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              gradient: AppColors.redGradient,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.white, width: 4),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.red.withValues(alpha: 0.45),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+          SizedBox(
+            height: BottomNavBar._iconZone,
+            child: Center(
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.redGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: AppSpacing.shadowRed,
                 ),
-              ],
+                child: Icon(config.icon, color: AppColors.white, size: 20),
+              ),
             ),
-            child: Icon(config.icon, color: AppColors.white, size: 27),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           Text(
             config.label,
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
               color: AppColors.red,
+              letterSpacing: 0.1,
             ),
           ),
         ],

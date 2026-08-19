@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
 import 'package:hastane_menu/components/async_status.dart';
+import 'package:hastane_menu/components/brand_logo.dart';
+import 'package:hastane_menu/components/page_header.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
@@ -19,18 +21,20 @@ class InfoPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.paddingAllBase,
         children: [
           const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: Text(
-              'ℹ️ Yemekhane Bilgileri',
-              style: AppTypography.headingLarge,
+            padding: EdgeInsets.only(bottom: 14),
+            child: PageHeader(
+              title: 'Yemekhane Bilgileri',
+              subtitle: 'Çalışma saatleri, konum ve iletişim',
             ),
           ),
           _InfoCard(info: HospitalInfo.fromConfig()),
-          AppSpacing.gapV16,
-          const _NetworkDebugCard(),
+          // AppSpacing.gapV16,
+          // const _NetworkDebugCard(),
+          AppSpacing.gapV24,
+          const _BrandFooter(),
         ],
       ),
     );
@@ -45,27 +49,15 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: const BoxDecoration(
         color: AppColors.card,
-        borderRadius: AppSpacing.borderRadiusLg,
+        borderRadius: AppSpacing.borderRadiusXl,
         boxShadow: AppSpacing.shadow,
       ),
       child: Column(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              gradient: AppColors.redGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.local_hospital_rounded,
-              color: AppColors.white,
-              size: 30,
-            ),
-          ),
+          const BrandLogoTile(size: 64, circular: true),
           AppSpacing.gapV12,
           Text(
             info.hospitalName,
@@ -75,26 +67,41 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(info.subtitle, style: AppTypography.bodySmall),
           AppSpacing.gapV16,
-          Text(
-            info.description,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodySmall,
+          // Açıklama — yumuşak zeminli alıntı kutusu.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceTint,
+              borderRadius: AppSpacing.borderRadiusMd,
+            ),
+            child: Text(
+              info.description,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodySmall,
+            ),
           ),
           AppSpacing.gapV16,
           _InfoRow(
             icon: Icons.access_time_rounded,
+            iconColor: AppColors.blue,
+            iconBackground: AppColors.blueSoft,
             title: 'Çalışma Saatleri',
             value: info.workingHours,
           ),
           AppSpacing.gapV8,
           _InfoRow(
             icon: Icons.place_rounded,
+            iconColor: AppColors.red,
+            iconBackground: AppColors.redSoft,
             title: 'Konum',
             value: info.location,
           ),
           AppSpacing.gapV8,
           _InfoRow(
             icon: Icons.phone_rounded,
+            iconColor: AppColors.success,
+            iconBackground: AppColors.successLight,
             title: 'İletişim',
             value: info.contact,
           ),
@@ -109,23 +116,37 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.value,
+    this.iconColor = AppColors.blue,
+    this.iconBackground = AppColors.blueSoft,
   });
 
   final IconData icon;
   final String title;
   final String value;
+  final Color iconColor;
+  final Color iconBackground;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surfaceTint,
         borderRadius: AppSpacing.borderRadiusMd,
+        border: Border.all(color: AppColors.divider),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.red, size: 22),
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: iconBackground,
+              borderRadius: AppSpacing.borderRadiusSm,
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
           AppSpacing.gapH12,
           Expanded(
             child: Column(
@@ -136,7 +157,7 @@ class _InfoRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.text,
+                    color: AppColors.textStrong,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -146,6 +167,31 @@ class _InfoRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Sayfa sonundaki kurumsal imza.
+class _BrandFooter extends StatelessWidget {
+  const _BrandFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const BrandLogo(size: 15),
+        AppSpacing.gapH8,
+        const Text(
+          'T.C. Sağlık Bakanlığı',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -203,10 +249,10 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: const BoxDecoration(
         color: AppColors.card,
-        borderRadius: AppSpacing.borderRadiusLg,
+        borderRadius: AppSpacing.borderRadiusXl,
         boxShadow: AppSpacing.shadow,
       ),
       child: Column(
@@ -214,18 +260,40 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
         children: [
           Row(
             children: [
-              const Icon(Icons.wifi_rounded, color: AppColors.red, size: 22),
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.redSoft,
+                  borderRadius: AppSpacing.borderRadiusSm,
+                ),
+                child: const Icon(
+                  Icons.wifi_rounded,
+                  color: AppColors.red,
+                  size: 20,
+                ),
+              ),
               AppSpacing.gapH12,
               const Expanded(
-                child: Text('🔧 Ağ Bilgileri (Test)',
-                    style: AppTypography.headingMedium),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ağ Bilgileri', style: AppTypography.headingMedium),
+                    SizedBox(height: 1),
+                    Text('Tanılama (test)', style: AppTypography.bodySmall),
+                  ],
+                ),
               ),
               FutureBuilder<Map<String, String?>>(
                 future: _future,
                 builder: (context, snapshot) => IconButton(
                   tooltip: 'Kopyala',
-                  icon: const Icon(Icons.copy_rounded,
-                      color: AppColors.red, size: 20),
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.red,
+                    size: 20,
+                  ),
                   onPressed: snapshot.hasData
                       ? () => _copy(snapshot.data!)
                       : null,
@@ -233,8 +301,11 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
               ),
               IconButton(
                 tooltip: 'Yenile',
-                icon: const Icon(Icons.refresh_rounded,
-                    color: AppColors.red, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: AppColors.red,
+                  size: 20,
+                ),
                 onPressed: _reload,
               ),
             ],

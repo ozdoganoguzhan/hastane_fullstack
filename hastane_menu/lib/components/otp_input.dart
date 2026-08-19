@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
+import 'package:hastane_menu/core/constants/app_spacing.dart';
 
 /// 6 (veya N) haneli kod giriş alanı — tek kutular halinde gösterilir,
 /// arkada gizli bir TextField klavyeyi yönetir.
@@ -49,9 +50,7 @@ class _OtpInputState extends State<OtpInput> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (var i = 0; i < widget.length; i++) _box(i),
-            ],
+            children: [for (var i = 0; i < widget.length; i++) _box(i)],
           ),
           // Gizli ama odaklanabilir gerçek giriş alanı.
           Positioned.fill(
@@ -78,32 +77,40 @@ class _OtpInputState extends State<OtpInput> {
 
   Widget _box(int index) {
     final text = _controller.text;
-    final filled = index < text.length;
-    final isActive = index == text.length && _focusNode.hasFocus;
+    final bool isFilled = index < text.length;
+    final bool isActive = index == text.length && _focusNode.hasFocus;
+
     final Color borderColor = widget.hasError
         ? AppColors.error
         : isActive
         ? AppColors.red
+        : isFilled
+        ? AppColors.redSoftBorder
         : AppColors.border;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
       width: 46,
-      height: 54,
+      height: 56,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        color: isFilled ? AppColors.redSoft : AppColors.white,
+        borderRadius: const BorderRadius.all(
+          Radius.circular(AppSpacing.radiusMd + 2),
+        ),
         border: Border.all(
           color: borderColor,
           width: isActive || widget.hasError ? 1.8 : 1.2,
         ),
+        boxShadow: isActive ? AppSpacing.shadowSm : null,
       ),
       child: Text(
-        filled ? text[index] : '',
+        isFilled ? text[index] : '',
         style: const TextStyle(
           fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: AppColors.text,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textStrong,
         ),
       ),
     );

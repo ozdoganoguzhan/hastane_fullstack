@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hastane_menu/components/app_button.dart';
 import 'package:hastane_menu/components/otp_input.dart';
 import 'package:hastane_menu/components/staff_qr_view.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
@@ -21,10 +22,6 @@ class LoginSheet extends StatefulWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => const LoginSheet(),
     );
   }
@@ -38,8 +35,7 @@ class _LoginSheetState extends State<LoginSheet> {
   final SessionState _sessionState = $get<SessionState>();
   final TextEditingController _phoneController = TextEditingController();
 
-  late _Step _step =
-      _sessionState.isLoggedIn ? _Step.qr : _Step.phone;
+  late _Step _step = _sessionState.isLoggedIn ? _Step.qr : _Step.phone;
   bool _loading = false;
   String? _error;
   String _code = '';
@@ -96,30 +92,44 @@ class _LoginSheetState extends State<LoginSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 44,
+              height: 4.5,
               margin: const EdgeInsets.only(bottom: 18),
               decoration: BoxDecoration(
                 color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
               ),
             ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              child: switch (_step) {
-                _Step.phone => _phoneStep(),
-                _Step.otp => _otpStep(),
-                _Step.qr => _qrStep(),
-              },
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                switchInCurve: Curves.easeOutCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.03),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: switch (_step) {
+                  _Step.phone => _phoneStep(),
+                  _Step.otp => _otpStep(),
+                  _Step.qr => _qrStep(),
+                },
+              ),
             ),
           ],
         ),
@@ -150,34 +160,21 @@ class _LoginSheetState extends State<LoginSheet> {
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(11),
           ],
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Telefon Numarası',
             hintText: '5XX XXX XX XX',
             prefixText: '+90  ',
-            prefixStyle: const TextStyle(
+            prefixStyle: TextStyle(
               color: AppColors.text,
               fontWeight: FontWeight.w600,
             ),
-            filled: true,
-            fillColor: AppColors.background,
-            border: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: AppColors.red, width: 1.5),
-            ),
           ),
         ),
-        if (_error != null) _ErrorText(_error!),
+        if (_error != null) _ErrorBanner(_error!),
         AppSpacing.gapV16,
-        _PrimaryButton(
+        AppButton(
           label: 'Kod Gönder',
+          icon: Icons.sms_rounded,
           loading: _loading,
           onPressed: _phone.length >= 10 ? _sendOtp : null,
         ),
@@ -191,11 +188,10 @@ class _LoginSheetState extends State<LoginSheet> {
       key: const ValueKey(_Step.otp),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SheetHeader(
+        const _SheetHeader(
           icon: Icons.sms_rounded,
           title: 'Doğrulama Kodu',
-          subtitle:
-              '+90 $_phone numarasına gönderilen 6 haneli kodu girin.',
+          subtitle: 'Telefonunuza gönderilen 6 haneli kodu girin.',
         ),
         AppSpacing.gapV24,
         OtpInput(
@@ -209,9 +205,9 @@ class _LoginSheetState extends State<LoginSheet> {
             _verify();
           },
         ),
-        if (_error != null) _ErrorText(_error!),
+        if (_error != null) _ErrorBanner(_error!),
         AppSpacing.gapV16,
-        _PrimaryButton(
+        AppButton(
           label: 'Doğrula',
           loading: _loading,
           onPressed: _code.length == 6 ? _verify : null,
@@ -224,10 +220,7 @@ class _LoginSheetState extends State<LoginSheet> {
                   _step = _Step.phone;
                   _error = null;
                 }),
-          child: const Text(
-            'Numarayı değiştir',
-            style: TextStyle(color: AppColors.textLight),
-          ),
+          child: const Text('Numarayı değiştir'),
         ),
       ],
     );
@@ -240,11 +233,13 @@ class _LoginSheetState extends State<LoginSheet> {
     return Column(
       key: const ValueKey(_Step.qr),
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         StaffQrView(session: session),
         AppSpacing.gapV24,
-        _PrimaryButton(
+        AppButton(
           label: 'Kapat',
+          variant: AppButtonVariant.soft,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         AppSpacing.gapV8,
@@ -276,11 +271,12 @@ class _SheetHeader extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 62,
+          height: 62,
           decoration: const BoxDecoration(
             gradient: AppColors.redGradient,
             shape: BoxShape.circle,
+            boxShadow: AppSpacing.shadowRed,
           ),
           child: Icon(icon, color: AppColors.white, size: 30),
         ),
@@ -290,7 +286,8 @@ class _SheetHeader extends StatelessWidget {
           style: const TextStyle(
             fontSize: 19,
             fontWeight: FontWeight.w800,
-            color: AppColors.text,
+            color: AppColors.textStrong,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 6),
@@ -308,55 +305,37 @@ class _SheetHeader extends StatelessWidget {
   }
 }
 
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    this.onPressed,
-    this.loading = false,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: loading ? null : onPressed,
-        child: loading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.white,
-                ),
-              )
-            : Text(label),
-      ),
-    );
-  }
-}
-
-class _ErrorText extends StatelessWidget {
-  const _ErrorText(this.message);
+/// Hata mesajı bandı — yumuşak kırmızı zeminli.
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner(this.message);
   final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
+    return Container(
+      margin: const EdgeInsets.only(top: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.errorLight,
+        borderRadius: AppSpacing.borderRadiusMd,
+      ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 17,
+            color: AppColors.error,
+          ),
           AppSpacing.gapH8,
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(fontSize: 12, color: AppColors.error),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.error,
+                height: 1.4,
+              ),
             ),
           ),
         ],

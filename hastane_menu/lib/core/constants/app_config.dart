@@ -27,8 +27,18 @@ sealed class AppConfig {
   static const bool useMockHbys = true;
 
   /// Mock sunucunun adresi (geliştirme).
-  ///  • Android emülatör → `http://10.0.2.2:5080`
-  ///  • Gerçek cihaz (aynı WiFi) → `http://192.168.1.106:5080`
+  ///
+  /// ⚠️ `10.0.2.2` YALNIZCA Android emülatöründe çalışır (host makineye köprü).
+  ///    GERÇEK CİHAZDA geliştirme PC'sinin LAN IP'si yazılmalıdır; ayrıca:
+  ///      • telefon ile PC aynı WiFi'da olmalı,
+  ///      • API 0.0.0.0'a bind edilmeli (`--urls http://0.0.0.0:5080`),
+  ///      • Windows Firewall'da 5080 inbound açık olmalı.
+  ///
+  /// ⚠️ PC'nin IP'si DHCP ile dağıtılıyor ve DEĞİŞEBİLİR (106 → 100 oldu).
+  ///    Bağlantı kesilirse `ipconfig` ile IP'yi kontrol edin.
+  ///
+  ///  • Gerçek cihaz (aynı WiFi) → `http://192.168.1.100:5080`
+  ///  • Android emülatör        → `http://10.0.2.2:5080`
   static const String mockBaseUrl = 'http://10.0.2.2:5080';
 
   // Gerçek Turkcell HBYS host'ları (doküman v1.0 — CANLI).
@@ -54,17 +64,35 @@ sealed class AppConfig {
   static const Duration apiTimeout = Duration(seconds: 15);
 
   // ══════════════════════════════════════════════════════════════════════
-  // SMS / OTP — KENDİ BACKEND'İMİZ
+  // SMS / OTP — 3G BİLİŞİM (uygulamadan doğrudan)
   // ══════════════════════════════════════════════════════════════════════
-  // ⚠️ Turkcell HBYS dokümanında SMS/OTP servisi YOKTUR. Bu yüzden doğrulama
-  // kodu üretimi/gönderimi (3G Bilişim) yalnızca bu uçlar için kendi
-  // backend'imizde durur. Menü ve personel kartı DOĞRUDAN Turkcell'dendir.
+  // ⚠️ Turkcell HBYS dokümanında SMS/OTP servisi YOKTUR ve canlıda aracı bir
+  // API'miz olmayacaktır → doğrulama kodu uygulamada üretilir ve SMS doğrudan
+  // 3G Bilişim gateway'ine gönderilir.
+  //
+  // ⚠️ GÜVENLİK: Aşağıdaki kimlik bilgileri APK içine gömülüdür ve decompile
+  //    ile okunabilir. Gerçek (ücretli) SMS hesabına geçerken bunu göz önünde
+  //    bulundurun; mümkünse kısıtlı/kotalı bir alt hesap kullanın.
 
-  /// Canlıda OTP backend'imizin (hastane intranet'i) adresi.
-  static const String otpProdBaseUrl = 'https://api.hastane.yerel';
+  /// false → SMS gönderilmez; kod yalnızca debug konsoluna yazılır.
+  static const bool smsEnabled = true;
 
-  /// Aktif OTP backend adresi — mock modda yerel sunucu.
-  static String get otpBaseUrl => useMockHbys ? mockBaseUrl : otpProdBaseUrl;
+  static const String smsBaseUrl = 'https://gateway.3gbilisim.com';
+  static const String smsUsername = '3g061896_otp';
+  static const String smsPassword = 't6G7Yjp';
+  static const String smsOriginator = 'KAPARIYEMEK';
+
+  /// Gateway `compncode` (firma kodu) parametresi.
+  static const String smsCompanyCode = '2';
+
+  /// Doğrulama kodu geçerlilik süresi.
+  static const Duration otpLifetime = Duration(minutes: 3);
+
+  /// Aynı numaraya tekrar kod göndermeden önce beklenecek süre.
+  static const Duration otpResendCooldown = Duration(seconds: 60);
+
+  /// Bir kod için izin verilen hatalı deneme sayısı.
+  static const int otpMaxAttempts = 5;
 
   // ══════════════════════════════════════════════════════════════════════
   // ÖNBELLEK (sliding expiration)
@@ -77,14 +105,45 @@ sealed class AppConfig {
   static const Duration cacheSlidingExpiration = Duration(minutes: 10);
 
   // ══════════════════════════════════════════════════════════════════════
+  // DEMO / TEST GİRİŞİ (kullanıcı adı + şifre)
+  // ══════════════════════════════════════════════════════════════════════
+  // Play Store sürümünde de açık kalacaktır → tahmin edilebilir bir şifre
+  // (eski: "12345") gerçek personel akışının yanında bir arka kapı olurdu.
+  //
+  // ⚠️ Değerler APK içine gömülüdür ve decompile ile okunabilir; bu yüzden
+  //    demo oturumu YALNIZCA dummy data görür (bkz. StaffSession.isDemo) ve
+  //    HBYS'ye hiçbir istek atmaz. Şifreyi build sırasında değiştirmek için:
+  //    flutter build appbundle --dart-define=DEMO_PASSWORD=...
+
+  /// Demo girişi tamamen kapatılabilir: --dart-define=DEMO_LOGIN_ENABLED=false
+  static const bool demoLoginEnabled =
+      bool.fromEnvironment('DEMO_LOGIN_ENABLED', defaultValue: true);
+
+  static const String demoUsername =
+      String.fromEnvironment('DEMO_USERNAME', defaultValue: 'test');
+
+  static const String demoPassword =
+      String.fromEnvironment('DEMO_PASSWORD', defaultValue: 'Kpr!Ymk-2026#7fQz');
+
+  /// Demo oturumu ağ kapısını (WiFi kısıtı) atlar mı?
+  ///
+  /// Amaç: hastane ağı dışındayken de uygulamanın gezilebilmesi (test, demo,
+  /// Play Store incelemesi). Güvenlik açığı DEĞİLDİR: demo oturumu HBYS'ye
+  /// hiç bağlanmaz, yalnızca dummy içerik görür (bkz. AGENTS.md §4.0 — asıl
+  /// kapı intranet-only API'dir, SSID yalnızca UX içindir).
+  /// Kapatmak için: --dart-define=DEMO_BYPASSES_NETWORK_GATE=false
+  static const bool demoBypassesNetworkGate =
+      bool.fromEnvironment('DEMO_BYPASSES_NETWORK_GATE', defaultValue: true);
+
+  // ══════════════════════════════════════════════════════════════════════
   // ⭐ WiFi ERİŞİM KISITI — "yalnızca hastane ağında çalış"
   // ══════════════════════════════════════════════════════════════════════
 
   /// İzinli WiFi ağ adları. ESKH, HBYS ile network bağlantısı olan SSID'dir.
-  static const List<String> allowedSsids = <String>['ESKH'];
+  static const List<String> allowedSsids = <String>['ESKH', 'AndroidWifi'];
 
   /// SSID kontrolü zorunlu mu? (Android'de konum izni + konum servisi gerekir.)
-  static const bool enforceSsid = false;
+  static const bool enforceSsid = true;
 
   /// İzinli erişim noktalarının (AP) MAC/BSSID **ilk 6 hanesi** (OUI).
   /// Cihaz değişiminde tekrar MAC tanımlama derdi olmasın diye önek eşleşmesi.

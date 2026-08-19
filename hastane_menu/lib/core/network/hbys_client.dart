@@ -142,7 +142,31 @@ class HbysClient {
     }
   }
 
+  /// Tüm istek adımlarını (bağlantı + gövde okuma) **tek bir toplam süreye**
+  /// bağlar. Aksi hâlde sunucu bağlantıyı kabul edip yanıtı hiç bitirmezse
+  /// istek sonsuza kadar asılı kalır ve ekranda spinner dönmeye devam eder.
   Future<dynamic> _send({
+    required String method,
+    required String url,
+    Object? body,
+    Map<String, dynamic>? query,
+    String? token,
+  }) {
+    return _sendInner(
+      method: method,
+      url: url,
+      body: body,
+      query: query,
+      token: token,
+    ).timeout(
+      AppConfig.apiTimeout,
+      onTimeout: () => throw const HbysException(
+        'HBYS isteği zaman aşımına uğradı. Sunucuya ulaşılamıyor olabilir.',
+      ),
+    );
+  }
+
+  Future<dynamic> _sendInner({
     required String method,
     required String url,
     Object? body,
@@ -166,9 +190,14 @@ class HbysClient {
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
       }
       if (body != null) {
-        // NOT: Doküman aylık-menü için GET + gövde kullanıyor; dart:io buna izin verir.
+        // Doküman aylık-menüyü GET + gövde ile istiyor. dart:io buna izin verir
+        // AMA gövdesiz sayılan fiillerde (GET/HEAD) contentLength varsayılan 0
+        // olduğu için uzunluğu ELLE bildirmek şarttır; aksi hâlde:
+        // "HttpException: content size exceeds specified contentLength".
+        final payload = utf8.encode(jsonEncode(body));
         request.headers.contentType = ContentType.json;
-        request.add(utf8.encode(jsonEncode(body)));
+        request.contentLength = payload.length;
+        request.add(payload);
       }
 
       final response = await request.close().timeout(AppConfig.apiTimeout);

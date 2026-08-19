@@ -28,9 +28,24 @@ sealed class AppDateUtils {
     'Pazar',
   ];
 
+  /// Standart Türkçe kısaltmalar — `substring(0,3)` KULLANMAYIN:
+  /// Pazartesi/Pazar → "Paz", Cuma/Cumartesi → "Cum" çakışır.
+  static const List<String> _weekdaysShort = [
+    'Pzt',
+    'Sal',
+    'Çar',
+    'Per',
+    'Cum',
+    'Cmt',
+    'Paz',
+  ];
+
   static String monthName(int month) => _months[month - 1];
 
   static String weekdayName(int weekday) => _weekdays[weekday - 1];
+
+  /// "Pzt", "Sal", ... — takvim/şerit etiketleri için.
+  static String weekdayShort(int weekday) => _weekdaysShort[weekday - 1];
 
   /// "20 Haziran"
   static String dayMonth(DateTime d) => '${d.day} ${monthName(d.month)}';

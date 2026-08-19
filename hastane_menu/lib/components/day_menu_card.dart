@@ -21,9 +21,9 @@ class DayMenuCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.card,
-        borderRadius: AppSpacing.borderRadiusLg,
+        borderRadius: AppSpacing.borderRadiusXl,
         boxShadow: AppSpacing.shadow,
       ),
       clipBehavior: Clip.antiAlias,
@@ -38,12 +38,13 @@ class DayMenuCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: AppSpacing.base,
                     vertical: 14,
                   ),
                   decoration: const BoxDecoration(
+                    color: AppColors.surfaceTint,
                     border: Border(
-                      bottom: BorderSide(color: AppColors.border),
+                      bottom: BorderSide(color: AppColors.divider),
                     ),
                   ),
                   child: Row(
@@ -52,44 +53,59 @@ class DayMenuCard extends StatelessWidget {
                         child: Text(
                           title,
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textStrong,
+                            letterSpacing: -0.2,
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.redGradientLight,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '🔥 ${menu.totalCalories} kcal',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ),
+                      if (menu.totalCalories > 0)
+                        _TotalCaloriePill(calories: menu.totalCalories),
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.base,
+                    0,
+                    AppSpacing.base,
+                    14,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final meal in meals) MealSection(meal: meal),
-                    ],
+                    children: [for (final meal in meals) MealSection(meal: meal)],
                   ),
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _TotalCaloriePill extends StatelessWidget {
+  const _TotalCaloriePill({required this.calories});
+
+  final int calories;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 5),
+      decoration: BoxDecoration(
+        gradient: AppColors.redGradientLight,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+        boxShadow: AppSpacing.shadowSm,
+      ),
+      child: Text(
+        '🔥 $calories kcal',
+        style: const TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          color: AppColors.white,
+          letterSpacing: 0.1,
+        ),
+      ),
     );
   }
 }

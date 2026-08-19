@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hastane_menu/components/pressable.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
+import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
 
-/// Bölüm başlığı: sol tarafta başlık, sağda opsiyonel bağlantı.
+/// Bölüm başlığı: kırmızı aksan çubuğu + başlık, sağda opsiyonel eylem çipi.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -18,20 +20,45 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: AppTypography.headingMedium),
+          Container(
+            width: 3.5,
+            height: 16,
+            decoration: const BoxDecoration(
+              gradient: AppColors.redGradient,
+              borderRadius: BorderRadius.all(Radius.circular(2)),
+            ),
+          ),
+          AppSpacing.gapH8,
+          Expanded(child: Text(title, style: AppTypography.headingMedium)),
           if (linkLabel != null)
-            GestureDetector(
+            Pressable(
               onTap: onLinkTap,
-              child: Text(
-                linkLabel!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.blue,
-                  fontWeight: FontWeight.w600,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+                decoration: BoxDecoration(
+                  color: AppColors.redSoft,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      linkLabel!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.red,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: AppColors.red,
+                    ),
+                  ],
                 ),
               ),
             ),

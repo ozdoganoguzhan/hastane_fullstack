@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-/// Boşluk, padding ve köşe yarıçapı sabitleri. Magic number YASAKTIR.
+import 'package:hastane_menu/core/constants/app_colors.dart';
+
+/// Boşluk, padding, köşe yarıçapı ve gölge sabitleri. Magic number YASAKTIR.
 sealed class AppSpacing {
   // === BASE ===
   static const double xs = 4;
@@ -36,6 +38,8 @@ sealed class AppSpacing {
   static const double radiusMd = 12;
   static const double radiusLg = 16;
   static const double radiusXl = 20;
+  static const double radiusXxl = 24;
+  static const double radiusHero = 32;
   static const double radiusRound = 100;
 
   static const BorderRadius borderRadiusSm = BorderRadius.all(
@@ -50,12 +54,51 @@ sealed class AppSpacing {
   static const BorderRadius borderRadiusXl = BorderRadius.all(
     Radius.circular(radiusXl),
   );
+  static const BorderRadius borderRadiusXxl = BorderRadius.all(
+    Radius.circular(radiusXxl),
+  );
 
-  // === SHADOWS (mockup --shadow / --shadow-lg) ===
-  static const List<BoxShadow> shadow = [
-    BoxShadow(color: Color(0x121A5CAD), blurRadius: 16, offset: Offset(0, 2)),
+  // === SHADOWS — katmanlı, yumuşak (premium görünümün bel kemiği) ===
+
+  /// İnce ayrım gölgesi (küçük butonlar, çipler).
+  static const List<BoxShadow> shadowSm = [
+    BoxShadow(color: Color(0x0A0F172A), blurRadius: 4, offset: Offset(0, 1)),
   ];
+
+  /// Standart kart gölgesi — iki katman: yakın temas + yumuşak yayılım.
+  static const List<BoxShadow> shadow = [
+    BoxShadow(color: Color(0x060F172A), blurRadius: 3, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0D1E293B), blurRadius: 18, offset: Offset(0, 6)),
+  ];
+
+  /// Vurgulu kart / açılır öğe gölgesi.
   static const List<BoxShadow> shadowLg = [
-    BoxShadow(color: Color(0x1AC8102E), blurRadius: 32, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x080F172A), blurRadius: 6, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0x141E293B), blurRadius: 36, offset: Offset(0, 14)),
+  ];
+
+  /// Kırmızı degrade yüzeyler için renkli parlama gölgesi.
+  static const List<BoxShadow> shadowRed = [
+    BoxShadow(
+      color: Color(0x59C8102E),
+      blurRadius: 24,
+      offset: Offset(0, 10),
+      spreadRadius: -6,
+    ),
+  ];
+
+  /// Alt navigasyon çubuğunun yukarı doğru yumuşak gölgesi.
+  static const List<BoxShadow> shadowNav = [
+    BoxShadow(color: Color(0x120F172A), blurRadius: 24, offset: Offset(0, -6)),
+  ];
+
+  /// Hero (kırmızı degrade başlık) altına düşen renkli gölge.
+  static List<BoxShadow> get shadowHero => [
+    BoxShadow(
+      color: AppColors.red.withValues(alpha: 0.28),
+      blurRadius: 28,
+      offset: const Offset(0, 12),
+      spreadRadius: -10,
+    ),
   ];
 }

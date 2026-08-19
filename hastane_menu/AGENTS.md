@@ -19,9 +19,9 @@
 
 ### Ne Yapıyor?
 
-Bir hastanenin **personel yemekhanesinin** günlük / haftalık / aylık menüsünü ve
-duyurularını gösterir. Kalori bilgisi, kategori bazlı yemek listesi, takvim
-görünümü içerir.
+Bir hastanenin **personel yemekhanesinin** günlük / haftalık / aylık menüsünü
+gösterir. Kalori bilgisi, öğün bazlı yemek listesi, takvim görünümü ve personel
+QR kartı içerir. (Duyurular özelliği kaldırılmıştır.)
 
 ### ⭐ Kritik Kural — Yalnızca Hastane WiFi'ında Çalışır
 
@@ -35,18 +35,17 @@ görünümü içerir.
 | Alan | Durum |
 | ---- | ----- |
 | Ağ kapısı (WiFi gate) | ✅ Çalışır — `WifiGuard` + `NetworkGate` + engelleme ekranı |
-| Ana Sayfa | ✅ Bugünün menüsü + duyuru önizlemesi (dummy data) |
-| Menü (Haftalık) | ✅ Hafta seçici + açılır gün kartları (öğün bölümleri) |
-| Menü (Aylık) | ✅ Takvim ızgarası + seçili gün menüsü |
-| Duyurular | ✅ Liste (dummy data) |
-| Bilgi | ✅ Yemekhane bilgileri (config'ten) |
+| Ana Sayfa | ✅ Kurumsal hero + bugünün menüsü (bindirilmiş kart) + hızlı erişim |
+| Menü Takvimi | ✅ TEK akışkan görünüm — ay çubuğu + açılır takvim + gün şeridi + kaydırmalı gün sayfaları (haftalık/aylık mod ayrımı kaldırıldı) |
+| Duyurular | ⛔ KALDIRILDI — sayfa/model/veri kaynağı silindi |
+| Gizlilik | ⭐ Personel adı/ID/telefon/kart no UI'da ASLA gösterilmez — §6 |
+| Bilgi | ✅ Yemekhane bilgileri (config'ten) + ağ tanılama kartı |
 | Oturum kapısı (Auth gate) | ✅ Giriş yapmadan içeriğe erişilemez — `AuthGate` + tam ekran `LoginPage` |
-| Giriş — Telefon (2FA) | ✅ Telefon → 6 haneli kod → oturum — bkz. §14 (dummy `AuthService`) |
-| Giriş — Kullanıcı adı/şifre | ✅ Demo girişi `test` / `12345` → `isDemo` oturum, ful dummy data — §14 |
-| Personel QR | ✅ Oturum açıkken alt-nav orta butonundan QR kart (`LoginSheet`) |
-| Menü veri katmanı | ✅ `MenuRepository` + `MenuService` (cache) — dummy aktif, remote hazır — §7, §15 |
-| Kendi REST API'miz (HBYS) | 🟡 İskelet hazır (`RemoteMenuRepository` + `ApiClient`); `AppConfig.useRemoteApi=false` — §15 |
-| Duyuru/personel API | ⛔ Henüz remote yok — duyuru dummy, personel kartı modeli hazır (§15) |
+| Giriş — Telefon (2FA) | ✅ Telefon → 6 haneli kod → oturum — bkz. §14 |
+| Giriş — Kullanıcı adı/şifre | ✅ Demo girişi `test` / `Kpr!Ymk-2026#7fQz` (AppConfig.demoPassword) → `isDemo` oturum — §14 |
+| Personel QR | ✅ Oturum açıkken alt-nav orta butonundan personel kartı (`LoginSheet`) |
+| Menü veri katmanı | ✅ `MenuService` (sliding cache) → `HbysClient` (doğrudan HBYS) — §7, §15 |
+| Tasarım sistemi | ✅ 2026-07 komple revamp — Bakanlık logosu markalaması, hero'lar, shimmer iskeletler, mikro animasyonlar — §6 |
 
 ---
 
@@ -221,19 +220,22 @@ static const bool   enableReachabilityCheck = false;    // intranet probe açık
 lib/
 ├── main.dart                          # Entry: ensureInitialized + setupServiceLocator + runApp
 ├── app/
-│   ├── app.dart                       # Kök: MaterialApp + NetworkGate(child: ShellPage())
-│   ├── app_theme.dart                 # HospitalTheme.light() — kırmızı/lacivert tema
-│   └── service_locator.dart           # WifiGuard kaydı
+│   ├── app.dart                       # Kök: MaterialApp + NetworkGate(AuthGate(ShellPage()))
+│   ├── app_theme.dart                 # HospitalTheme.light() — tema + merkezi input/buton temaları
+│   └── service_locator.dart           # WifiGuard / HbysClient / AuthService / MenuService kaydı
 │
 ├── core/
+│   ├── cache/
+│   │   └── sliding_cache.dart         # Kayan süreli bellek önbelleği (menü ayları)
 │   ├── constants/
-│   │   ├── app_config.dart            # ⭐ TEK CONFIG — hastane + WiFi kapısı ayarları
-│   │   ├── app_colors.dart            # Renk paleti (mockup birebir)
-│   │   ├── app_spacing.dart           # Boşluk / radius / gölge sabitleri
-│   │   └── app_typography.dart        # Metin stilleri
+│   │   ├── app_config.dart            # ⭐ TEK CONFIG — hastane + HBYS + SMS + WiFi kapısı
+│   │   ├── app_colors.dart            # Renk paleti + öğün aksanları + degradeler
+│   │   ├── app_spacing.dart           # Boşluk / radius / katmanlı gölge sabitleri
+│   │   └── app_typography.dart        # Metin stilleri (overline, stat/tabular dahil)
 │   ├── network/
 │   │   ├── wifi_guard.dart            # ⭐ Ağ kapısı servisi + WifiGuardStatus
-│   │   └── api_client.dart            # ⭐ Kendi REST API'mize JSON istemcisi (dart:io) — §15
+│   │   ├── hbys_client.dart           # ⭐ Turkcell HBYS istemcisi (entegre-login + Bearer) — §15
+│   │   └── sms_client.dart            # 3G Bilişim SMS gateway istemcisi (OTP)
 │   ├── state/
 │   │   ├── state_manager.dart         # SM, ReactiveState, $get/$state/$set
 │   │   └── session_state.dart         # Giriş yapan personel oturumu (reaktif)
@@ -243,77 +245,114 @@ lib/
 │
 ├── models/
 │   ├── menu_models.dart               # MealType, MenuDish, Meal, DailyMenu (HBYS yapısı — §15)
-│   ├── announcement.dart              # AnnouncementType, Announcement
+│   ├── hospital_info.dart             # Bilgi sayfası modeli (AppConfig'ten)
 │   └── staff_session.dart             # StaffSession (personnelId, cardNo, isDemo, ...)
 │
 ├── data/
 │   ├── dto/
 │   │   └── hbys_menu_dto.dart         # ⭐ HBYS ham JSON → DailyMenu (kcal/tarih/başlık parse)
-│   ├── menu_repository.dart           # ⭐ MenuRepository + Dummy/Remote impl — §15
-│   ├── menu_service.dart              # ⭐ Menü tek giriş noktası — ay cache + kaynak seçimi
-│   ├── menu_data.dart                 # DummyMenuData — örnek aylık menü rotasyonu
-│   ├── announcement_data.dart         # Dummy duyurular
-│   └── auth_service.dart              # 2FA + demo giriş servisi — ⚠️ DUMMY (§14)
+│   ├── menu_service.dart              # ⭐ Menü tek giriş noktası — HbysClient + sliding cache
+│   └── auth_service.dart              # 2FA (SMS OTP) + demo giriş servisi (§14)
 │
 ├── components/
-│   ├── network_gate.dart              # ⭐ Uygulamayı saran ağ kapısı widget'ı
+│   ├── network_gate.dart              # ⭐ Ağ kapısı widget'ı + markalı açılış ekranı
 │   ├── auth_gate.dart                 # ⭐ Oturum kapısı — giriş yoksa LoginPage
-│   ├── wifi_blocked_screen.dart       # ⭐ Tam ekran engelleme ekranı
-│   ├── app_header.dart                # Kırmızı degrade üst başlık
-│   ├── bottom_nav_bar.dart            # Alt navigasyon (4 sekme + taşan orta QR butonu)
+│   ├── wifi_blocked_screen.dart       # ⭐ Tam ekran engelleme ekranı (markalı)
+│   ├── brand_logo.dart                # ⭐ BrandLogo / BrandLogoTile — Bakanlık logosu (assets)
+│   ├── pressable.dart                 # Basınca küçülme mikro-etkileşimi
+│   ├── app_button.dart                # AppButton — degrade/soft geniş buton (loading'li)
+│   ├── skeleton.dart                  # Shimmer + SkeletonBox — yükleme iskeletleri
+│   ├── segmented_tabs.dart            # Kayan thumb'lı segment kontrolü (menü + giriş)
+│   ├── page_header.dart               # Aksan çubuklu sayfa başlığı (Menü/Bilgi)
+│   ├── app_header.dart                # Ana sayfa hero'su — degrade + filigran + selamlama (İSİMSİZ)
+│   ├── bottom_nav_bar.dart            # ⭐ Yüzen alt navigasyon — 4 EŞİT slot (3 sekme + QR eylemi)
 │   ├── login_sheet.dart               # Oturum sonrası QR kart sheet'i (§14)
 │   ├── otp_input.dart                 # 6 haneli kod giriş alanı
-│   ├── staff_qr_view.dart             # Personel QR kartı (qr_flutter)
-│   ├── section_header.dart            # Bölüm başlığı + "tümü" linki
+│   ├── staff_qr_view.dart             # Personel kartı — QR + "Geçerli" (KİŞİSEL VERİ GÖSTERMEZ)
+│   ├── section_header.dart            # Bölüm başlığı + eylem çipi
 │   ├── empty_state.dart               # Boş durum (emoji + başlık + açıklama)
-│   ├── meal_section.dart              # ⭐ Bir öğün bölümü (başlık + yemek satırları)
-│   ├── day_menu_card.dart             # ⭐ Bir günün tüm öğünleri (home + aylık seçili gün)
-│   ├── async_status.dart             # Menü yükleniyor / hata kartları
-│   ├── day_card.dart                  # Açılır gün kartı (haftalık — öğün bölümleri)
-│   ├── announcement_card.dart         # Duyuru kartı
-│   └── round_nav_button.dart          # Takvim/hafta ok butonu
+│   ├── meal_section.dart              # ⭐ Bir öğün bölümü (öğün aksan renkleri burada)
+│   ├── day_menu_card.dart             # ⭐ Bir günün tüm öğünleri (home + menü takvimi)
+│   ├── async_status.dart              # Yükleme iskeleti / hata kartları
+│   └── round_nav_button.dart          # Takvim ok butonu
 │
 └── pages/
-    ├── login_page.dart                # ⭐ Tam ekran giriş kapısı (telefon + kullanıcı adı)
+    ├── login_page.dart                # ⭐ Tam ekran giriş — degrade hero + bindirilmiş kart
     ├── shell_page.dart                # Bottom-nav iskeleti (IndexedStack)
-    ├── home_page.dart                 # Ana sayfa
-    ├── announcements_page.dart        # Tüm duyurular
-    ├── info_page.dart                 # Yemekhane bilgileri
-    ├── menu_page.dart                 # Haftalık/Aylık sekme kabı
-    └── menu/
-        ├── weekly_view.dart           # Haftalık görünüm
-        └── monthly_view.dart          # Aylık takvim görünümü
+    ├── home_page.dart                 # Ana sayfa — hero + bugünün menüsü + hızlı erişim
+    ├── info_page.dart                 # Yemekhane bilgileri + ağ tanılama kartı
+    └── menu_page.dart                 # ⭐ Menü Takvimi — ay çubuğu + açılır takvim +
+                                       #    gün şeridi + PageView gün sayfaları (tek görünüm)
+
+assets/
+└── logo-tr.png                        # ⭐ T.C. Sağlık Bakanlığı logosu (pubspec'te kayıtlı)
 ```
 
 ---
 
-## 6. Tema ve Tasarım Sistemi
+## 6. Tema ve Tasarım Sistemi (2026-07 Revamp)
 
-### Renk Paleti (Kırmızı + Lacivert / T.C. Sağlık Bakanlığı)
+Tasarım dili: **kurumsal premium** — T.C. Sağlık Bakanlığı kırmızısı + lacivert
++ yumuşak nötr zemin; katmanlı gölgeler, degrade hero'lar, logo filigranları,
+shimmer iskeletler ve mikro animasyonlar.
 
-`lib/core/constants/app_colors.dart` — `sealed class AppColors`:
+### Renk Paleti (`app_colors.dart` — `sealed class AppColors`)
 
 ```dart
-red       = #C8102E   redLight = #E8253F   redDark  = #A00D24
-blue      = #1A5CAD   blueLight= #2E7BD6   blueDark = #134A8A
-background= #F2F4F7   card     = #FFFFFF
-text      = #1E293B   textLight= #64748B   textMuted= #94A3B8
-border    = #E2E8F0
-// + semantic (success/warning/error/info) + kategori ikon arka planları
-// + AppColors.redGradient / redGradientLight
+red      = #C8102E  redLight = #E8253F  redDark = #A00D24  redDeep = #7E0A1E
+redSoft  = #FDECEF  (çip/rozet zemini)   redSoftBorder = #F6D3DA
+blue     = #1A5CAD  blueLight= #2E7BD6  blueDark= #134A8A  blueSoft= #EAF2FB
+background = #F4F6FA   card = #FFFFFF   surfaceTint = #F7F8FC
+textStrong = #0F172A   text = #1E293B   textLight = #64748B   textMuted = #94A3B8
+border = #E4E8F1   divider = #EDF0F6   + semantic (success/warning/error/info)
+// Öğün aksanları: breakfast(#D97706), lunch(#C8102E), dinner(#4F46E5) + *Soft
+// Degradeler: redGradient, redGradientLight, heroGradient (3 duraklı), blueGradient
 ```
+
+### Marka (Bakanlık Logosu)
+
+- `assets/logo-tr.png` **pubspec'te kayıtlıdır**; HER kullanım
+  `components/brand_logo.dart` üzerinden yapılır (doğrudan `Image.asset` YASAK):
+  - `BrandLogo(size, color)` — çıplak logo; `color` ile filigran/tek renk.
+  - `BrandLogoTile(size, circular)` — beyaz kutuda kurumsal rozet.
+- Kırmızı hero'larda filigran: `BrandLogo(color: white.withValues(alpha: .07))`.
+
+### Paylaşılan Premium Primitifler
+
+| Bileşen | Kullanım |
+| ------- | -------- |
+| `Pressable` | Dokununca küçülme (kart/buton mikro-etkileşimi) |
+| `AppButton` | Geniş birincil buton — `primary` (degrade+glow) / `soft`, `loading` |
+| `Shimmer` + `SkeletonBox` | Yükleme iskeletleri (`MenuLoadingCard` bunları kullanır) |
+| `SegmentedTabs` | Kayan beyaz thumb'lı segment (menü + giriş ekranı) |
+| `PageHeader` | Aksan çubuklu sayfa başlığı |
+| `SectionHeader` | Bölüm başlığı + kırmızı eylem çipi |
 
 ### Diğer
 
-- **Spacing/Radius/Shadow:** `AppSpacing` (`gapV16`, `paddingAllBase`,
-  `borderRadiusLg`, `shadow`, `shadowLg`).
-- **Tipografi:** `AppTypography` (`headingLarge`, `bodyMedium`, `label`...).
-- **Tema:** `HospitalTheme.light()` (Material 3, sadece light mode).
-- **Font:** Özel font paketlenmedi (sistem fontu). Mockup'taki Inter istenirse
-  `pubspec.yaml`'a eklenip `AppTypography`'de `fontFamily` set edilir.
+- **Spacing/Radius/Shadow:** `AppSpacing` — radius: `Sm..Xxl` + `radiusHero=32`;
+  gölgeler **katmanlıdır**: `shadowSm/shadow/shadowLg` + renkli `shadowRed`,
+  `shadowNav`, `shadowHero`.
+- **Tipografi:** `AppTypography` — başlıklarda negatif letter-spacing,
+  `overline` (geniş tracking'li etiket), `stat` (tabular rakamlar — kalori).
+- **Tema:** `HospitalTheme.light()` (Material 3, light). Metin alanı ve buton
+  görünümleri TEMADA merkezidir — sayfalarda border/renk TEKRAR TANIMLAMA.
+- **Öğün aksan renkleri** UI katmanında `MealTypeColors` extension'ındadır
+  (`meal_section.dart`) — modeller saf kalır.
+- **Animasyon standartları:** giriş 460ms `easeOutCubic` (fade+slide),
+  geçişler 200-260ms, basınç 110ms. `AnimatedSize` ile açılır kartlar.
+
+### ⭐ Gizlilik Kuralı (KIRMIZI ÇİZGİ)
+
+> Personelin **adı, ID'si, telefon numarası, kart numarası veya HERHANGİ bir
+> kişisel bilgisi UI'da ASLA metin olarak gösterilmez.** QR kodun içeriği
+> yalnızca QR piksellerinde yaşar; yanında yazıya dökülmez. Selamlama isimsizdir
+> ("Günaydın 👋"), OTP metinleri numarayı tekrar etmez ("Telefonunuza
+> gönderilen…"). Bu kuralı bozan hiçbir tasarım değişikliği kabul edilmez.
 
 > **Yasaklar:** Hardcoded renk → `AppColors`. Hardcoded boşluk → `AppSpacing`.
-> Magic number → `core/constants/`.
+> Magic number → `core/constants/`. Logo → yalnızca `BrandLogo`.
+> Kişisel veri UI'da → YASAK (yukarıdaki kural).
 
 ---
 
@@ -332,7 +371,7 @@ UI (FutureBuilder)
   `month(yil, ay)`, `day(tarih)`, `week(pazartesi)`. Ayları **cache**'ler.
 - **Kaynak seçimi** otomatiktir: oturum `isDemo` ise **veya**
   `AppConfig.useRemoteApi == false` ise → `DummyMenuRepository`; aksi hâlde
-  `RemoteMenuRepository` (bizim API). Demo (`test`/`12345`) hep dummy görür.
+  `RemoteMenuRepository` (bizim API). Demo (`test`/`AppConfig.demoPassword`) hep dummy görür.
 - **Modeller** (`lib/models/menu_models.dart`) HBYS yapısına göredir:
   `DailyMenu → 3 × Meal (kahvaltı/öğle/akşam) → ≤4 × MenuDish` (§15).
 - Duyurular hâlâ dummy (`AnnouncementData`); aynı desenle remote'a taşınabilir.
@@ -435,13 +474,12 @@ flutter build ios --release   # iOS release (entitlement için §4.5)
 
 ## 13. Bilinen Sınırlamalar / TODO
 
-- [x] Menü veri katmanı repository/service deseni (HBYS yapısı) — §7, §15. ✅
-- [ ] Backend `/menu/aylik` proxy'sini bağla + `useRemoteApi=true` (şu an dummy) — §15.
-- [ ] Duyuru servisini de remote'a taşı (menüyle aynı desen).
+- [x] Menü veri katmanı service deseni (HBYS yapısı) — §7, §15. ✅
+- [ ] Canlıya geçişte `AppConfig.useMockHbys = false` yap (mock → gerçek HBYS) — §15.
 - [ ] Intranet reachability probe'u varsayılan aktif et + sertleştir (§4.8).
 - [ ] iOS entitlement'ı Xcode'da bağla (ücretli hesap gerekir).
 - [ ] Giriş akışını gerçek SMS/OTP + personel kartı API'sine bağla (`cardNo` → QR) — §14, §15.
-- [ ] Demo girişini (`test`/`12345`, `isDemo`) gerçek API gelince kaldır/sınırla (§14).
+- [ ] Demo girişini (`test`/`AppConfig.demoPassword`, `isDemo`) gerçek API gelince kaldır/sınırla (§14).
 - [ ] Personel oturumunu güvenli depolamada kalıcı yap (şu an bellek içi).
 - [ ] (Opsiyonel) Inter fontunu paketle, dark mode, push bildirim.
 
@@ -465,7 +503,7 @@ Giriş ekranında bir segmented seçici ile **iki yöntem** sunulur:
 
 **B) Kullanıcı adı + şifre — DEMO girişi**
 - `AuthService.loginWithCredentials(username, password)` çağrılır.
-- ⚠️ DUMMY: yalnızca **`test` / `12345`** kabul edilir.
+- ⚠️ DUMMY: yalnızca **`test` / `Kpr!Ymk-2026#7fQz` (AppConfig.demoPassword)** kabul edilir.
 - Başarılıysa `StaffSession.isDemo == true` olan bir oturum döner. Bu oturumda
   **gerçek API'ye gidilmez**; tüm içerik `lib/data/` dummy kaynaklarından gelir.
   Gerçek API entegrasyonunda demo akışını korumak için bu bayrağa bakılır.

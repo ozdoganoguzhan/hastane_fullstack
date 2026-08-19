@@ -26,13 +26,19 @@ enum WifiGuardStatus {
   /// Mobil veri / kablolu / hiç bağlantı yok.
   notWifi,
 
-  /// SSID okuma izni reddedildi (Android: nearbyWifi / location).
+  /// SSID okuma izni reddedildi (Android: konum / nearbyWifi).
   permissionDenied,
 
   /// İzin var ama cihazın konum servisleri kapalı (Android).
   locationOff,
-}
 
+  /// İzin VAR, konum servisi AÇIK — ama işletim sistemi ağ adını yine de
+  /// vermiyor (iOS entitlement eksik, üretici kısıtı, VPN vb.).
+  ///
+  /// ⚠️ Bunu [permissionDenied] ile birleştirmeyin: izin vermiş kullanıcıya
+  /// "konum izni gerekiyor" demek çıkışı olmayan bir döngüdür.
+  ssidUnavailable,
+}
 
 class WifiGuard implements IDisposable {
   final Connectivity _connectivity = Connectivity();
@@ -43,6 +49,10 @@ class WifiGuard implements IDisposable {
   /// Kapı durumunu yayan reaktif state. UI bunu dinler.
   final ReactiveState<WifiGuardStatus> status =
       ReactiveState<WifiGuardStatus>(WifiGuardStatus.checking);
+
+  /// Son değerlendirmede okunabilen ağ adı — engelleme ekranı "şu an X
+  /// ağındasınız" diyebilsin diye tutulur. Okunamadıysa `null`.
+  String? currentSsid;
 
   /// Connectivity değişimlerini dinlemeye başla + ilk kontrolü yap.
   void start() {
@@ -61,50 +71,55 @@ class WifiGuard implements IDisposable {
   }
 
   /// Tek seferlik tam değerlendirme.
+  ///
+  /// ⭐ Kapı **FAIL-CLOSED**'dır: bir kontrol yapıl*a*mıyorsa (izin verilmedi,
+  /// konum servisi kapalı, OS değeri maskeledi) kullanıcı İÇERİ ALINMAZ; ne
+  /// eksikse onu söyleyen ekran gösterilir. İzin vermeyen erişemez.
+  ///
+  /// Gerekçe: SSID taklit edilebilir (telefon hotspot'u). BSSID okunamadığında
+  /// "SSID doğruydu, geçsin" demek kapıyı tamamen anlamsızlaştırır.
   Future<WifiGuardStatus> evaluate() async {
+    currentSsid = null;
+
     // 1) Bağlantı tipi — ucuz ve anlık. WiFi yoksa hemen reddet.
     final conn = await _connectivity.checkConnectivity();
     if (!conn.contains(ConnectivityResult.wifi)) {
       return WifiGuardStatus.notWifi;
     }
 
-    // 2) Hızlı yol: SSID allowlist (best-effort; iOS'ta entitlement yoksa null).
+    // 2) SSID izinli mi? Okunamıyorsa sebebini DOĞRU söyle ve ENGELLE.
     if (AppConfig.enforceSsid) {
       final ssid = _stripQuotes(await _safe(() => _netInfo.getWifiName()));
-      if (!_isUnknownSsid(ssid) && _isAllowed(ssid!)) {
-        // 2b) SSID taklit edilebilir → bağlı AP'nin MAC (BSSID) öneki de
-        //     hastanenin erişim noktaları listesinde olmalı.
-        final bssidResult = await _checkAccessPoint();
-        if (bssidResult != null) return bssidResult;
 
-        return WifiGuardStatus.onAllowedWifi;
+      if (_isUnknownSsid(ssid)) return _diagnoseUnreadable();
+
+      currentSsid = ssid;
+      if (!_isAllowed(ssid!)) return WifiGuardStatus.wrongWifi;
+    }
+
+    // 3) Bağlı AP'nin MAC (BSSID) öneki hastaneye ait mi?
+    //    Okunamıyor/maskeli ise (izin veya konum servisi eksik) → ENGELLE.
+    if (AppConfig.enforceBssid && AppConfig.allowedBssidPrefixes.isNotEmpty) {
+      final bssid = _normalizeMac(await _safe(() => _netInfo.getWifiBSSID()));
+
+      if (bssid == null || bssid.length < 12 || _isMaskedMac(bssid)) {
+        return _diagnoseUnreadable();
       }
 
-      // 3) SSID okunamadıysa nedenini ayırt et (Android UX için).
-      if (_isUnknownSsid(ssid)) {
-        final reason = await _diagnoseSsidFailure();
-        if (reason != null) {
-          // İzin/konum sorunu olsa bile reachability açıksa son sözü o söyler.
-          if (AppConfig.enableReachabilityCheck &&
-              await _internalHostReachable()) {
-            return WifiGuardStatus.onAllowedWifi;
-          }
-          return reason;
-        }
-      }
+      final allowed = AppConfig.allowedBssidPrefixes
+          .map(_normalizeMac)
+          .whereType<String>()
+          .any(bssid.startsWith);
+
+      if (!allowed) return WifiGuardStatus.wrongAccessPoint;
     }
 
-    // 4) Otoritatif yol: yalnızca intranet'ten erişilebilen host'a ulaş.
-    if (AppConfig.enableReachabilityCheck && await _internalHostReachable()) {
-      return WifiGuardStatus.onAllowedWifi;
+    // 4) Opsiyonel ek kanıt: yalnızca intranet'ten erişilebilen host.
+    if (AppConfig.enableReachabilityCheck && !await _internalHostReachable()) {
+      return WifiGuardStatus.wrongWifi;
     }
 
-    // 5) SSID zorunlu değilse ve reachability kapalıysa: WiFi'da olmak yeter.
-    if (!AppConfig.enforceSsid && !AppConfig.enableReachabilityCheck) {
-      return WifiGuardStatus.onAllowedWifi;
-    }
-
-    return WifiGuardStatus.wrongWifi;
+    return WifiGuardStatus.onAllowedWifi;
   }
 
   // ── Yardımcılar ──────────────────────────────────────────────────────────
@@ -116,31 +131,6 @@ class WifiGuard implements IDisposable {
         .contains(target);
   }
 
-  /// Bağlı olunan erişim noktasının (AP) MAC/BSSID öneki hastaneye ait mi?
-  ///
-  /// SSID taklit edilebildiği için (telefon hotspot'u, ucuz router) asıl kanıt
-  /// budur: BSSID'in ilk 6 hanesi (OUI) hastane AP'lerinin listesinde olmalı.
-  ///
-  /// Dönüş: `null` → sorun yok / kontrol atlandı, aksi hâlde engelleme durumu.
-  Future<WifiGuardStatus?> _checkAccessPoint() async {
-    if (!AppConfig.enforceBssid || AppConfig.allowedBssidPrefixes.isEmpty) {
-      return null;
-    }
-
-    final bssid = _normalizeMac(await _safe(() => _netInfo.getWifiBSSID()));
-
-    // BSSID okunamadıysa (iOS entitlement yok / izin verilmedi / OS maskeledi)
-    // SSID kararına güven — kullanıcıyı yanlışlıkla dışarıda bırakma.
-    if (bssid == null || bssid.length < 6 || _isMaskedMac(bssid)) return null;
-
-    final allowed = AppConfig.allowedBssidPrefixes
-        .map(_normalizeMac)
-        .whereType<String>()
-        .any(bssid.startsWith);
-
-    return allowed ? null : WifiGuardStatus.wrongAccessPoint;
-  }
-
   /// "04:ca:ed:11:22:33" · "04-CA-ED-11-22-33" · "04caed" → "04caed112233"
   String? _normalizeMac(String? raw) {
     if (raw == null) return null;
@@ -148,7 +138,9 @@ class WifiGuard implements IDisposable {
     return cleaned.isEmpty ? null : cleaned;
   }
 
-  /// İzin yokken Android sahte BSSID döndürür (02:00:00:00:00:00 / tüm sıfır).
+  /// Android, izin verilmemişse **veya konum servisleri kapalıysa** BSSID'i
+  /// maskeler: `02:00:00:00:00:00`. Bu değer "okuyamadım" demektir → engelle.
+  /// Kaynak: developer.android.com/reference/android/net/wifi/WifiInfo
   bool _isMaskedMac(String mac) =>
       mac == '020000000000' || mac == '000000000000';
 
@@ -164,47 +156,89 @@ class WifiGuard implements IDisposable {
   bool _isUnknownSsid(String? ssid) =>
       ssid == null || ssid.isEmpty || ssid == '<unknown ssid>';
 
-  /// SSID neden okunamadı? İzin reddi mi, konum servisi kapalı mı?
-  /// Android dışında (iOS entitlement vb.) ayırt edemeyiz → null.
-  Future<WifiGuardStatus?> _diagnoseSsidFailure() async {
-    if (!Platform.isAndroid) return null;
+  /// SSID/BSSID neden okunamadı? İzin mi yok, konum servisi mi kapalı, yoksa
+  /// ikisi de tamam da OS mu vermiyor?
+  ///
+  /// **Android** (kaynak: developer.android.com/develop/connectivity/wifi/wifi-permissions):
+  ///  • Bağlı ağın SSID/BSSID'i (`WifiManager.getConnectionInfo`) HER sürümde
+  ///    ACCESS_FINE_LOCATION ister; API ≥ 33'te ek olarak NEARBY_WIFI_DEVICES.
+  ///  • Ayrıca **konum servisleri AÇIK** olmalı; kapalıysa izin verilmiş olsa
+  ///    bile SSID `<unknown ssid>`, BSSID `02:00:00:00:00:00` döner.
+  ///
+  /// **iOS** (kaynak: developer.apple.com — Access Wi-Fi Information Entitlement):
+  ///  • `com.apple.developer.networking.wifi-info` entitlement (ÜCRETLİ hesap) +
+  ///  • konum izni (When In Use, precise) + konum servisleri açık.
+  ///
+  /// Sebep saptanamazsa [WifiGuardStatus.ssidUnavailable] döner — asla
+  /// "izin yok" diye yanlış teşhis koymaz.
+  Future<WifiGuardStatus> _diagnoseUnreadable() async {
     try {
-      final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
-      final permission = sdkInt >= 33
-          ? Permission.nearbyWifiDevices
-          : Permission.locationWhenInUse;
-      final permStatus = await permission.status;
-      if (!permStatus.isGranted) return WifiGuardStatus.permissionDenied;
+      if (Platform.isAndroid) {
+        final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
 
-      final service = await Permission.location.serviceStatus;
-      if (service == ServiceStatus.disabled) {
-        return WifiGuardStatus.locationOff;
+        if (!(await Permission.locationWhenInUse.status).isGranted) {
+          return WifiGuardStatus.permissionDenied;
+        }
+        if (sdkInt >= 33 &&
+            !(await Permission.nearbyWifiDevices.status).isGranted) {
+          return WifiGuardStatus.permissionDenied;
+        }
+        if (await Permission.location.serviceStatus == ServiceStatus.disabled) {
+          return WifiGuardStatus.locationOff;
+        }
+        return WifiGuardStatus.ssidUnavailable;
+      }
+
+      if (Platform.isIOS) {
+        if (!(await Permission.locationWhenInUse.status).isGranted) {
+          return WifiGuardStatus.permissionDenied;
+        }
+        if (await Permission.location.serviceStatus == ServiceStatus.disabled) {
+          return WifiGuardStatus.locationOff;
+        }
+        // İzin/servis tamam ama okunamıyorsa entitlement eksiktir (ücretli hesap).
+        return WifiGuardStatus.ssidUnavailable;
       }
     } catch (_) {
-      return null;
+      return WifiGuardStatus.ssidUnavailable;
     }
-    return null;
+    return WifiGuardStatus.ssidUnavailable;
   }
 
-  /// SSID okumak için gereken izni iste (Android). Engelleme ekranından çağrılır.
+  /// SSID/BSSID okumak için gereken izinleri ister, ardından kapıyı **yeniden
+  /// değerlendirir** (izin verildiği anda ekran kendiliğinden geçsin diye).
+  ///
+  /// Bağlı ağın adı her Android sürümünde konum iznine bağlıdır; 13+ ayrıca
+  /// NEARBY_WIFI_DEVICES ister → **ikisi birden** istenir. Kullanıcı daha önce
+  /// "bir daha sorma" dediyse `request()` sessizce geri döner; bu durumda tek
+  /// çıkış uygulama ayarlarıdır, oraya yönlendirilir.
   Future<void> requestPermission() async {
-    if (!Platform.isAndroid) return;
     try {
-      final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
-      if (sdkInt >= 33) {
-        await Permission.nearbyWifiDevices.request();
-      } else {
-        await Permission.locationWhenInUse.request();
+      if (Platform.isAndroid) {
+        final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+        final results = await <Permission>[
+          Permission.locationWhenInUse,
+          if (sdkInt >= 33) Permission.nearbyWifiDevices,
+        ].request();
+
+        if (results.values.any((s) => s.isPermanentlyDenied)) {
+          await openAppSettings();
+        }
+      } else if (Platform.isIOS) {
+        final result = await Permission.locationWhenInUse.request();
+        if (result.isPermanentlyDenied) await openAppSettings();
       }
     } catch (_) {
       // sessizce yut — kullanıcı ayarlardan da verebilir.
     }
+    await refresh();
   }
 
   /// LAN varlığını kanıtlar: yalnızca hastane içinde route edilebilen host
   /// kısa timeout içinde cevap verirse ağdayız demektir.
   Future<bool> _internalHostReachable() async {
-    final client = HttpClient()..connectionTimeout = AppConfig.reachabilityTimeout;
+    final client = HttpClient()
+      ..connectionTimeout = AppConfig.reachabilityTimeout;
     try {
       final request = await client
           .headUrl(Uri.parse(AppConfig.intranetHealthUrl))
