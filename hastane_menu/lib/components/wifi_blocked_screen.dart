@@ -45,17 +45,7 @@ class WifiBlockedScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const BrandLogo(size: 22),
-                  AppSpacing.gapH8,
-                  const Text(
-                    AppConfig.hospitalName,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textLight,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
+                  const BrandLogo(height: 22),
                 ],
               ),
             ),
@@ -72,7 +62,7 @@ class WifiBlockedScreen extends StatelessWidget {
                         height: 108,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: AppColors.red.withValues(alpha: 0.06),
+                          color: AppColors.primary.withValues(alpha: 0.06),
                           shape: BoxShape.circle,
                         ),
                         child: Container(
@@ -80,10 +70,10 @@ class WifiBlockedScreen extends StatelessWidget {
                           height: 82,
                           alignment: Alignment.center,
                           decoration: const BoxDecoration(
-                            color: AppColors.errorLight,
+                            color: AppColors.primarySoftBorder,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(_icon, size: 38, color: AppColors.red),
+                          child: Icon(_icon, size: 38, color: AppColors.primary),
                         ),
                       ),
                       AppSpacing.gapV24,
@@ -111,7 +101,12 @@ class WifiBlockedScreen extends StatelessWidget {
                       AppSpacing.gapV24,
                       _NetworkChips(
                         expected: AppConfig.displayNetworkName,
-                        current: currentSsid,
+                        // Yalnızca gerçekten yanlış ağdayken göster: SSID doğru
+                        // ama AP yanlışken kırmızı çipte doğru adı görmek
+                        // kafa karıştırırdı.
+                        current: status == WifiGuardStatus.wrongWifi
+                            ? currentSsid
+                            : null,
                       ),
                       AppSpacing.gapV32,
                       AppButton(
@@ -250,18 +245,18 @@ class _NetworkChips extends StatelessWidget {
         _Chip(
           icon: Icons.wifi_rounded,
           label: 'Beklenen ağ: $expected',
-          background: AppColors.blueSoft,
-          border: AppColors.blue,
-          foreground: AppColors.blueDark,
+          background: AppColors.accentSoft,
+          border: AppColors.accent,
+          foreground: AppColors.accentDark,
         ),
         if (showCurrent) ...[
           AppSpacing.gapV8,
           _Chip(
             icon: Icons.wifi_tethering_error_rounded,
             label: 'Bağlı olduğunuz ağ: ${current!}',
-            background: AppColors.redSoft,
-            border: AppColors.red,
-            foreground: AppColors.redDark,
+            background: AppColors.primarySoft,
+            border: AppColors.primary,
+            foreground: AppColors.primaryDark,
           ),
         ],
       ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 
-/// Uygulama teması — kırmızı/lacivert kurumsal hastane teması (Light).
+/// Uygulama teması — Kapari kurumsal lacivert teması (Light).
 ///
 /// Metin alanı, buton ve sheet görünümleri burada MERKEZİLEŞTİRİLMİŞTİR;
 /// sayfalarda tekrar border/renk tanımlamayın.
@@ -17,13 +17,13 @@ sealed class HospitalTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: AppColors.red,
+      primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
       splashFactory: InkSparkle.splashFactory,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.red,
+        primary: AppColors.primary,
         onPrimary: AppColors.onPrimary,
-        secondary: AppColors.blue,
+        secondary: AppColors.accent,
         onSecondary: AppColors.white,
         surface: AppColors.white,
         onSurface: AppColors.text,
@@ -51,7 +51,7 @@ sealed class HospitalTheme {
           side: const BorderSide(color: AppColors.border, width: 0.5),
         ),
       ),
-      // Tüm metin alanları tek merkezden: yumuşak zemin + kırmızı odak.
+      // Tüm metin alanları tek merkezden: yumuşak zemin + lacivert odak.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceTint,
@@ -66,7 +66,7 @@ sealed class HospitalTheme {
           fontWeight: FontWeight.w500,
         ),
         floatingLabelStyle: const TextStyle(
-          color: AppColors.red,
+          color: AppColors.primary,
           fontWeight: FontWeight.w600,
         ),
         prefixIconColor: AppColors.textMuted,
@@ -76,13 +76,13 @@ sealed class HospitalTheme {
         ),
         border: inputBorder(AppColors.border),
         enabledBorder: inputBorder(AppColors.border),
-        focusedBorder: inputBorder(AppColors.red, 1.6),
+        focusedBorder: inputBorder(AppColors.primary, 1.6),
         errorBorder: inputBorder(AppColors.error),
         focusedErrorBorder: inputBorder(AppColors.error, 1.6),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.red,
+          backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
           disabledBackgroundColor: AppColors.border,
           disabledForegroundColor: AppColors.textMuted,
@@ -105,8 +105,8 @@ sealed class HospitalTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.red,
-          side: const BorderSide(color: AppColors.redSoftBorder, width: 1.4),
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primarySoftBorder, width: 1.4),
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: const RoundedRectangleBorder(

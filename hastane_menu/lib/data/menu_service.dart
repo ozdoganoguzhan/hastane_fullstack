@@ -20,8 +20,21 @@ class MenuService {
   final HbysClient _client;
   final SlidingCache<String, List<DailyMenu>> _cache;
 
+  /// Oturum demo (test) oturumu mu?
+  ///
+  /// HBYS host'ları yalnızca hastane intranet'inden çözülür; demo oturumu ağ
+  /// dışında da açılabildiğinden (bkz. `NetworkGate`) veri katmanı bu oturumda
+  /// gerçek servisi ATLAR ve örnek menü döner (AGENTS.md §14).
+  bool get _isDemoSession =>
+      SM.tryGet<SessionState>()?.current?.isDemo ?? false;
+
   /// Belirli ayın menüleri (önbellekli).
   Future<List<DailyMenu>> month(int year, int month) {
+    // Demo verisi önbelleğe YAZILMAZ; gerçek oturuma geçildiğinde örnek menü
+    // sızmasın diye.
+    if (_isDemoSession) {
+      return Future<List<DailyMenu>>.value(DemoMenuSource.month(year, month));
+    }
     return _cache.getOrLoad('$year-$month', () async {
       final json = await _client.monthlyMenu(year, month);
       return HbysMenuDto.listFromResponse(json);

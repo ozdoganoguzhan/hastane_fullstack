@@ -2,50 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 
-/// T.C. Sağlık Bakanlığı logosu (`assets/logo-tr.png`) için tek giriş noktası.
+/// Kapari Hazır Yemek logosu (`assets/kapari.png`) için tek giriş noktası.
 ///
-/// - [BrandLogo]     → çıplak logo; [color] verilirse tek renge boyanır
-///   (kırmızı degrade üzerinde beyaz filigran için `white.withValues(...)`).
-/// - [BrandLogoTile] → beyaz yuvarlatılmış kutu içinde logo; hero başlıklar,
-///   giriş ekranı ve kartlarda kullanılan kurumsal rozet hâlidir.
+/// ⚠️ Logo **KARE DEĞİLDİR** — yaklaşık 2:1 en/boy oranında bir wordmark'tır
+/// (717×348). Bu yüzden ölçü **yükseklikten** verilir, genişlik oranı korunarak
+/// kendiliğinden hesaplanır. Logoyu kareye sıkıştırmayın.
+///
+/// - [BrandLogo]     → çıplak wordmark; [color] verilirse tek renge boyanır
+///   (lacivert degrade üzerinde beyaz/filigran kullanım için).
+/// - [BrandLogoTile] → beyaz yuvarlatılmış kare rozet içinde wordmark; uygulama
+///   ikonuyla aynı görünüm. Hero başlıklar ve kartlarda kullanılır.
 class BrandLogo extends StatelessWidget {
-  const BrandLogo({super.key, this.size = 40, this.color});
+  const BrandLogo({super.key, this.height = 24, this.color});
 
-  /// Logonun kenar uzunluğu (kare).
-  final double size;
+  /// Logonun YÜKSEKLİĞİ. Genişlik en/boy oranından gelir (≈ height × 2.06).
+  final double height;
 
   /// Verilirse logo bu renge boyanır (filigran/tek renk kullanım).
   final Color? color;
 
-  static const String _asset = 'assets/logo-tr.png';
+  /// Wordmark'ın en/boy oranı — kaynak görsel 717×348.
+  static const double aspectRatio = 717 / 348;
+
+  static const String _asset = 'assets/kapari.png';
 
   @override
   Widget build(BuildContext context) {
     return Image.asset(
       _asset,
-      width: size,
-      height: size,
+      height: height,
       color: color,
+      fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
       excludeFromSemantics: true,
     );
   }
 }
 
-/// Beyaz zemin üzerinde gölgeli logo kutusu — kurumsal marka rozeti.
+/// Beyaz zemin üzerinde gölgeli logo rozeti — uygulama ikonunun ekran içi hâli.
+///
+/// Wordmark geniş olduğu için rozet **daire yapılmaz**; yuvarlatılmış kare
+/// kullanılır ve logo genişliğe göre yerleştirilir.
 class BrandLogoTile extends StatelessWidget {
-  const BrandLogoTile({
-    super.key,
-    this.size = 48,
-    this.circular = false,
-    this.elevated = true,
-  });
+  const BrandLogoTile({super.key, this.size = 48, this.elevated = true});
 
-  /// Kutunun dış kenar uzunluğu; logo içeride orantılı küçülür.
+  /// Rozetin kenar uzunluğu (kare); logo içeride orantılı yerleşir.
   final double size;
-
-  /// `true` → tam daire, `false` → yuvarlatılmış kare.
-  final bool circular;
 
   /// `false` → gölgesiz (renkli zeminlerde kenar çizgisi yeterlidir).
   final bool elevated;
@@ -56,16 +58,15 @@ class BrandLogoTile extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(horizontal: size * 0.12),
       decoration: BoxDecoration(
         color: AppColors.white,
-        shape: circular ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: circular
-            ? null
-            : BorderRadius.circular(size * 0.28),
+        borderRadius: BorderRadius.circular(size * 0.24),
         border: Border.all(color: AppColors.divider),
         boxShadow: elevated ? AppSpacing.shadow : null,
       ),
-      child: BrandLogo(size: size * 0.68),
+      // Kare rozetin içinde okunur kalması için yüksekliği kenarın ~%38'i.
+      child: BrandLogo(height: size * 0.38),
     );
   }
 }

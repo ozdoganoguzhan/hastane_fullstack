@@ -77,10 +77,10 @@ sealed class AppSpacing {
     BoxShadow(color: Color(0x141E293B), blurRadius: 36, offset: Offset(0, 14)),
   ];
 
-  /// Kırmızı degrade yüzeyler için renkli parlama gölgesi.
-  static const List<BoxShadow> shadowRed = [
+  /// Lacivert degrade yüzeyler için renkli parlama gölgesi.
+  static const List<BoxShadow> shadowPrimary = [
     BoxShadow(
-      color: Color(0x59C8102E),
+      color: Color(0x5919227D),
       blurRadius: 24,
       offset: Offset(0, 10),
       spreadRadius: -6,
@@ -92,10 +92,10 @@ sealed class AppSpacing {
     BoxShadow(color: Color(0x120F172A), blurRadius: 24, offset: Offset(0, -6)),
   ];
 
-  /// Hero (kırmızı degrade başlık) altına düşen renkli gölge.
+  /// Hero (lacivert degrade başlık) altına düşen renkli gölge.
   static List<BoxShadow> get shadowHero => [
     BoxShadow(
-      color: AppColors.red.withValues(alpha: 0.28),
+      color: AppColors.primary.withValues(alpha: 0.28),
       blurRadius: 28,
       offset: const Offset(0, 12),
       spreadRadius: -10,

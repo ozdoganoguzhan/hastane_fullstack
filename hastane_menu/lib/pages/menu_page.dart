@@ -333,20 +333,20 @@ class _TodayChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
         decoration: BoxDecoration(
-          color: AppColors.redSoft,
+          color: AppColors.primarySoft,
           borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.today_rounded, size: 14, color: AppColors.red),
+            Icon(Icons.today_rounded, size: 14, color: AppColors.primary),
             AppSpacing.gapH4,
             Text(
               'Bugün',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.red,
+                color: AppColors.primary,
               ),
             ),
           ],
@@ -384,7 +384,7 @@ class _MonthBar extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: calendarOpen ? AppColors.redSoft : Colors.transparent,
+                color: calendarOpen ? AppColors.primarySoft : Colors.transparent,
                 borderRadius: AppSpacing.borderRadiusMd,
               ),
               child: Row(
@@ -397,7 +397,7 @@ class _MonthBar extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.3,
                       color: calendarOpen
-                          ? AppColors.red
+                          ? AppColors.primary
                           : AppColors.textStrong,
                     ),
                   ),
@@ -410,7 +410,7 @@ class _MonthBar extends StatelessWidget {
                       Icons.keyboard_arrow_down_rounded,
                       size: 20,
                       color: calendarOpen
-                          ? AppColors.red
+                          ? AppColors.primary
                           : AppColors.textMuted,
                     ),
                   ),
@@ -448,13 +448,13 @@ class _DayChip extends StatelessWidget {
     final Color labelColor = selected
         ? AppColors.white.withValues(alpha: 0.85)
         : isToday
-        ? AppColors.red
+        ? AppColors.primary
         : AppColors.textMuted;
 
     final Color dayColor = selected
         ? AppColors.white
         : isToday
-        ? AppColors.red
+        ? AppColors.primary
         : isWeekend
         ? AppColors.textMuted
         : AppColors.textStrong;
@@ -467,16 +467,16 @@ class _DayChip extends StatelessWidget {
         width: 54,
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          gradient: selected ? AppColors.redGradient : null,
+          gradient: selected ? AppColors.primaryGradient : null,
           color: selected ? null : AppColors.white,
           borderRadius: AppSpacing.borderRadiusLg,
           border: selected
               ? null
               : Border.all(
-                  color: isToday ? AppColors.red : AppColors.divider,
+                  color: isToday ? AppColors.primary : AppColors.divider,
                   width: isToday ? 1.4 : 1,
                 ),
-          boxShadow: selected ? AppSpacing.shadowRed : AppSpacing.shadowSm,
+          boxShadow: selected ? AppSpacing.shadowPrimary : AppSpacing.shadowSm,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -506,7 +506,7 @@ class _DayChip extends StatelessWidget {
               height: 4,
               decoration: BoxDecoration(
                 color: hasMenu
-                    ? (selected ? AppColors.white : AppColors.red)
+                    ? (selected ? AppColors.white : AppColors.primary)
                     : Colors.transparent,
                 shape: BoxShape.circle,
               ),
@@ -564,7 +564,7 @@ class _MonthGrid extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.3,
                       color: i >= 5
-                          ? AppColors.red.withValues(alpha: 0.65)
+                          ? AppColors.primary.withValues(alpha: 0.65)
                           : AppColors.textMuted,
                     ),
                   ),
@@ -624,15 +624,15 @@ class _GridCell extends StatelessWidget {
   Widget build(BuildContext context) {
     // Renk önceliği: seçili > bugün > menülü > normal.
     final Color bg = isSelected
-        ? AppColors.red
+        ? AppColors.primary
         : isToday || hasMenu
-        ? AppColors.redSoft
+        ? AppColors.primarySoft
         : Colors.transparent;
 
     final Color fg = isSelected
         ? AppColors.white
         : isToday
-        ? AppColors.red
+        ? AppColors.primary
         : isWeekend
         ? AppColors.textMuted
         : AppColors.text;
@@ -647,9 +647,9 @@ class _GridCell extends StatelessWidget {
           color: bg,
           borderRadius: AppSpacing.borderRadiusMd,
           border: isToday && !isSelected
-              ? Border.all(color: AppColors.red, width: 1.5)
+              ? Border.all(color: AppColors.primary, width: 1.5)
               : null,
-          boxShadow: isSelected ? AppSpacing.shadowRed : null,
+          boxShadow: isSelected ? AppSpacing.shadowPrimary : null,
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -671,7 +671,7 @@ class _GridCell extends StatelessWidget {
                   width: 4,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.white : AppColors.red,
+                    color: isSelected ? AppColors.white : AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hastane_menu/components/brand_logo.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
-import 'package:hastane_menu/core/constants/app_config.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
 import 'package:hastane_menu/models/staff_session.dart';
@@ -9,7 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 /// Personel QR kartı — yemekhane girişinde okutulacak kurumsal kimlik kartı.
 ///
-/// Kırmızı degrade çerçeve içinde: Bakanlık logolu başlık, kesikli ayraç,
+/// Lacivert degrade çerçeve içinde: Kapari logolu başlık, kesikli ayraç,
 /// QR kod, personel bilgisi ve geçerlilik rozeti.
 class StaffQrView extends StatelessWidget {
   const StaffQrView({super.key, required this.session});
@@ -22,7 +21,7 @@ class StaffQrView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(1.6),
       decoration: const BoxDecoration(
-        gradient: AppColors.redGradient,
+        gradient: AppColors.primaryGradient,
         borderRadius: AppSpacing.borderRadiusXxl,
         boxShadow: AppSpacing.shadowLg,
       ),
@@ -40,22 +39,22 @@ class StaffQrView extends StatelessWidget {
             // ── Kart başlığı ─────────────────────────────────────────────
             Row(
               children: [
-                const BrandLogo(size: 32),
+                const BrandLogo(height: 26),
                 AppSpacing.gapH12,
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'T.C. SAĞLIK BAKANLIĞI',
+                        'YEMEKHANE',
                         style: AppTypography.overline.copyWith(
-                          color: AppColors.red,
+                          color: AppColors.primary,
                           fontSize: 9.5,
                         ),
                       ),
                       const SizedBox(height: 1),
                       const Text(
-                        AppConfig.hospitalName,
+                        'Personel Yemek Kartı',
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w800,
@@ -72,7 +71,7 @@ class StaffQrView extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.redSoft,
+                    color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
                   ),
                   child: const Text(
@@ -81,7 +80,7 @@ class StaffQrView extends StatelessWidget {
                       fontSize: 8.5,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1,
-                      color: AppColors.red,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),

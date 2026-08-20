@@ -118,7 +118,7 @@ class MenuErrorCard extends StatelessWidget {
             child: const Icon(
               Icons.cloud_off_rounded,
               size: 30,
-              color: AppColors.red,
+              color: AppColors.primary,
             ),
           ),
           AppSpacing.gapV12,

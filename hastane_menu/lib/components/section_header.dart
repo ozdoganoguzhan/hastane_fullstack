@@ -4,7 +4,7 @@ import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
 
-/// Bölüm başlığı: kırmızı aksan çubuğu + başlık, sağda opsiyonel eylem çipi.
+/// Bölüm başlığı: lacivert aksan çubuğu + başlık, sağda opsiyonel eylem çipi.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -27,7 +27,7 @@ class SectionHeader extends StatelessWidget {
             width: 3.5,
             height: 16,
             decoration: const BoxDecoration(
-              gradient: AppColors.redGradient,
+              gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.all(Radius.circular(2)),
             ),
           ),
@@ -39,7 +39,7 @@ class SectionHeader extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
                 decoration: BoxDecoration(
-                  color: AppColors.redSoft,
+                  color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
                 ),
                 child: Row(
@@ -49,14 +49,14 @@ class SectionHeader extends StatelessWidget {
                       linkLabel!,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: AppColors.red,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const Icon(
                       Icons.chevron_right_rounded,
                       size: 16,
-                      color: AppColors.red,
+                      color: AppColors.primary,
                     ),
                   ],
                 ),

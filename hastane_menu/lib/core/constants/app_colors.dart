@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Hastane menü uygulamasının renk paleti.
+/// Kapari Hazır Yemek uygulamasının renk paleti.
 ///
-/// T.C. Sağlık Bakanlığı kurumsal kırmızısı + lacivert + yumuşak nötr zemin.
+/// Kurumsal lacivert (`assets/kapari.png` logosundan örneklendi: #19227D) +
+/// logodaki camgöbeği aksan (#05A1E6) + yumuşak nötr zemin.
 /// Hardcoded renk YASAKTIR -> her zaman buradan.
 sealed class AppColors {
-  // === PRIMARY (Kırmızı / T.C. Sağlık Bakanlığı) ===
-  static const Color red = Color(0xFFC8102E);
-  static const Color redLight = Color(0xFFE8253F);
-  static const Color redDark = Color(0xFFA00D24);
-  static const Color redDeep = Color(0xFF7E0A1E);
+  // === PRIMARY (Kurumsal lacivert — Kapari) ===
+  static const Color primary = Color(0xFF19227D);
+  static const Color primaryLight = Color(0xFF2E3AA6);
+  static const Color primaryDark = Color(0xFF121A5E);
+  static const Color primaryDeep = Color(0xFF0B1140);
 
-  /// Kırmızının çok açık zemin tonu (rozet/çip arka planları).
-  static const Color redSoft = Color(0xFFFDECEF);
-  static const Color redSoftBorder = Color(0xFFF6D3DA);
+  /// Lacivertin çok açık zemin tonu (rozet/çip arka planları).
+  static const Color primarySoft = Color(0xFFEDEFF9);
+  static const Color primarySoftBorder = Color(0xFFD5DAF0);
 
-  // === SECONDARY (Lacivert / Mavi) ===
-  static const Color blue = Color(0xFF1A5CAD);
-  static const Color blueLight = Color(0xFF2E7BD6);
-  static const Color blueDark = Color(0xFF134A8A);
-  static const Color blueSoft = Color(0xFFEAF2FB);
+  // === ACCENT (Logodaki camgöbeği) ===
+  static const Color accent = Color(0xFF05A1E6);
+  static const Color accentLight = Color(0xFF3CBAF0);
+  static const Color accentDark = Color(0xFF0277B8);
+  static const Color accentSoft = Color(0xFFE4F4FD);
 
   // === SURFACE & BACKGROUND ===
   static const Color white = Color(0xFFFFFFFF);
@@ -47,41 +48,43 @@ sealed class AppColors {
   static const Color warningLight = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFDC2626);
   static const Color errorLight = Color(0xFFFEE2E2);
-  static const Color info = Color(0xFF1A5CAD);
-  static const Color infoLight = Color(0xFFDBEAFE);
+  static const Color info = Color(0xFF0277B8);
+  static const Color infoLight = Color(0xFFE4F4FD);
 
   // === ÖĞÜN AKSAN RENKLERİ (Kahvaltı / Öğle / Akşam) ===
+  // Lacivert kurumsal zeminde birbirinden ayrılabilen üç ton: sıcak amber,
+  // camgöbeği (marka aksanı) ve mor. Öğle artık kırmızı DEĞİLDİR.
   static const Color breakfast = Color(0xFFD97706);
   static const Color breakfastSoft = Color(0xFFFDF1DC);
-  static const Color lunch = Color(0xFFC8102E);
-  static const Color lunchSoft = Color(0xFFFDECEF);
-  static const Color dinner = Color(0xFF4F46E5);
-  static const Color dinnerSoft = Color(0xFFEAE9FC);
+  static const Color lunch = Color(0xFF0277B8);
+  static const Color lunchSoft = Color(0xFFE4F4FD);
+  static const Color dinner = Color(0xFF6D28D9);
+  static const Color dinnerSoft = Color(0xFFEFE9FC);
 
   // === GRADIENTS ===
-  static const LinearGradient redGradient = LinearGradient(
+  static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [red, redDark],
+    colors: [primary, primaryDark],
   );
 
-  static const LinearGradient redGradientLight = LinearGradient(
+  static const LinearGradient primaryGradientLight = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [redLight, red],
+    colors: [primaryLight, primary],
   );
 
-  /// Hero başlık degradesi — üstte canlı, altta derin kurumsal kırmızı.
+  /// Hero başlık degradesi — üstte canlı lacivert, altta derin gece mavisi.
   static const LinearGradient heroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [redLight, red, redDeep],
+    colors: [primaryLight, primary, primaryDeep],
     stops: [0.0, 0.45, 1.0],
   );
 
-  static const LinearGradient blueGradient = LinearGradient(
+  static const LinearGradient accentGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [blueLight, blueDark],
+    colors: [accentLight, accentDark],
   );
 }

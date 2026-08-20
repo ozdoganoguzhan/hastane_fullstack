@@ -100,14 +100,14 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.red : AppColors.textMuted;
+    final Color color = selected ? AppColors.primary : AppColors.textMuted;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Aktif sekmede ikonun arkasında yumuşak kırmızı hap belirir.
+          // Aktif sekmede ikonun arkasında yumuşak lacivert hap belirir.
           SizedBox(
             height: BottomNavBar._iconZone,
             child: Center(
@@ -119,7 +119,7 @@ class _NavItem extends StatelessWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.redSoft : Colors.transparent,
+                  color: selected ? AppColors.primarySoft : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
                 ),
                 child: AnimatedScale(
@@ -168,9 +168,9 @@ class _QrItem extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  gradient: AppColors.redGradient,
+                  gradient: AppColors.primaryGradient,
                   shape: BoxShape.circle,
-                  boxShadow: AppSpacing.shadowRed,
+                  boxShadow: AppSpacing.shadowPrimary,
                 ),
                 child: Icon(config.icon, color: AppColors.white, size: 20),
               ),
@@ -182,7 +182,7 @@ class _QrItem extends StatelessWidget {
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: AppColors.red,
+              color: AppColors.primary,
               letterSpacing: 0.1,
             ),
           ),

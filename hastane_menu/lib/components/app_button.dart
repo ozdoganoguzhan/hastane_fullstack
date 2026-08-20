@@ -5,10 +5,10 @@ import 'package:hastane_menu/core/constants/app_spacing.dart';
 
 /// Buton görünümü.
 enum AppButtonVariant {
-  /// Kırmızı degrade + renkli parlama gölgesi — birincil eylem.
+  /// Lacivert degrade + renkli parlama gölgesi — birincil eylem.
   primary,
 
-  /// Açık kırmızı zemin + kırmızı metin — ikincil eylem.
+  /// Açık lacivert zemin + lacivert metin — ikincil eylem.
   soft,
 }
 
@@ -37,7 +37,7 @@ class AppButton extends StatelessWidget {
     final bool primary = variant == AppButtonVariant.primary;
 
     final Color foreground = _enabled
-        ? (primary ? AppColors.white : AppColors.red)
+        ? (primary ? AppColors.white : AppColors.primary)
         : AppColors.textMuted;
 
     return Pressable(
@@ -47,14 +47,14 @@ class AppButton extends StatelessWidget {
         height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          gradient: _enabled && primary ? AppColors.redGradient : null,
+          gradient: _enabled && primary ? AppColors.primaryGradient : null,
           color: _enabled
-              ? (primary ? null : AppColors.redSoft)
+              ? (primary ? null : AppColors.primarySoft)
               : AppColors.border,
           borderRadius: const BorderRadius.all(
             Radius.circular(AppSpacing.radiusMd + 2),
           ),
-          boxShadow: _enabled && primary ? AppSpacing.shadowRed : null,
+          boxShadow: _enabled && primary ? AppSpacing.shadowPrimary : null,
         ),
         child: loading
             ? SizedBox(
@@ -62,7 +62,7 @@ class AppButton extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  color: primary ? AppColors.white : AppColors.red,
+                  color: primary ? AppColors.white : AppColors.primary,
                 ),
               )
             : Row(

@@ -17,7 +17,7 @@ enum _Method { phone, credentials }
 /// Telefon yönteminin alt adımı.
 enum _PhoneStep { input, otp }
 
-/// Tam ekran giriş kapısı — kurumsal degrade hero + Bakanlık logosu +
+/// Tam ekran giriş kapısı — kurumsal lacivert hero + Kapari logosu +
 /// hero üzerine bindirilmiş giriş kartı.
 ///
 /// Uygulamaya yalnızca giriş yapıldıktan sonra erişilir (bkz. `AuthGate`).
@@ -383,7 +383,7 @@ class _HeroBackdrop extends StatelessWidget {
             right: -60,
             top: -20,
             child: BrandLogo(
-              size: 240,
+              height: 140,
               color: AppColors.white.withValues(alpha: 0.07),
             ),
           ),
@@ -413,19 +413,8 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const BrandLogoTile(size: 92, circular: true),
+        const BrandLogo(height: 44, color: AppColors.white),
         AppSpacing.gapV16,
-        const Text(
-          AppConfig.hospitalName,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.white,
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 4),
         Text(
           AppConfig.appSubtitle,
           style: TextStyle(
@@ -449,10 +438,10 @@ class _Footer extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const BrandLogo(size: 16),
+        const BrandLogo(height: 16),
         AppSpacing.gapH8,
         Text(
-          'T.C. Sağlık Bakanlığı • ${AppConfig.appSubtitle}',
+          AppConfig.appSubtitle,
           style: const TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w600,

@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,8 +8,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// ⭐ Play Store yükleme anahtarı — android/key.properties (GİZLİ, .gitignore'da).
+// Dosya yoksa release derlemesi debug anahtarına DÜŞMEZ, hata verir; böylece
+// yanlışlıkla imzasız/debug imzalı bir bundle mağazaya yüklenemez.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasKeystore = keystorePropertiesFile.exists()
+if (hasKeystore) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.ozi.hastane_menu"
+    namespace = "com.kapari.eskhMenu"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ozi.hastane_menu"
+        applicationId = "com.kapari.eskhMenu"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,11 +42,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                // Yerel `flutter run --release` çalışabilsin diye; bu imza ile
+                // üretilen çıktı MAĞAZAYA YÜKLENEMEZ.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

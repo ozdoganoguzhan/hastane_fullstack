@@ -83,9 +83,9 @@ class _OtpInputState extends State<OtpInput> {
     final Color borderColor = widget.hasError
         ? AppColors.error
         : isActive
-        ? AppColors.red
+        ? AppColors.primary
         : isFilled
-        ? AppColors.redSoftBorder
+        ? AppColors.primarySoftBorder
         : AppColors.border;
 
     return AnimatedContainer(
@@ -95,7 +95,7 @@ class _OtpInputState extends State<OtpInput> {
       height: 56,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isFilled ? AppColors.redSoft : AppColors.white,
+        color: isFilled ? AppColors.primarySoft : AppColors.white,
         borderRadius: const BorderRadius.all(
           Radius.circular(AppSpacing.radiusMd + 2),
         ),

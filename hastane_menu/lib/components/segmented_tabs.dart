@@ -80,7 +80,7 @@ class SegmentedTabs extends StatelessWidget {
   Widget _segment(int index) {
     final item = items[index];
     final bool selected = index == current;
-    final Color color = selected ? AppColors.red : AppColors.textLight;
+    final Color color = selected ? AppColors.primary : AppColors.textLight;
 
     return GestureDetector(
       onTap: () => onChanged(index),

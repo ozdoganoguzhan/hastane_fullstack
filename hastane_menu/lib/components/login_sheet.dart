@@ -82,13 +82,6 @@ class _LoginSheetState extends State<LoginSheet> {
     }
   }
 
-  void _logout() {
-    _sessionState.logout();
-    _phoneController.clear();
-    // Oturum kapanınca AuthGate tam ekran LoginPage'e döner; sheet'i kapat.
-    Navigator.of(context).maybePop();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -242,14 +235,8 @@ class _LoginSheetState extends State<LoginSheet> {
           variant: AppButtonVariant.soft,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        AppSpacing.gapV8,
-        TextButton(
-          onPressed: _logout,
-          child: const Text(
-            'Çıkış Yap',
-            style: TextStyle(color: AppColors.red),
-          ),
-        ),
+        // NOT: "Çıkış Yap" buradan KALDIRILDI — çıkmak için QR kodu açmak
+        // zorunda kalınmasın diye Bilgi sayfasına taşındı (bkz. AGENTS.md §14).
       ],
     );
   }
@@ -274,9 +261,9 @@ class _SheetHeader extends StatelessWidget {
           width: 62,
           height: 62,
           decoration: const BoxDecoration(
-            gradient: AppColors.redGradient,
+            gradient: AppColors.primaryGradient,
             shape: BoxShape.circle,
-            boxShadow: AppSpacing.shadowRed,
+            boxShadow: AppSpacing.shadowPrimary,
           ),
           child: Icon(icon, color: AppColors.white, size: 30),
         ),

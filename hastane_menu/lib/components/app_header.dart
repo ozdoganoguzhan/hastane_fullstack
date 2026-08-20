@@ -5,7 +5,7 @@ import 'package:hastane_menu/core/constants/app_config.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/utils/date_utils.dart';
 
-/// Ana sayfa hero başlığı — kurumsal kırmızı degrade, Bakanlık logosu
+/// Ana sayfa hero başlığı — kurumsal lacivert degrade, Kapari logosu
 /// filigranı, kişisel selamlama, tarih ve servis durumu çipi.
 class AppHeader extends StatelessWidget {
   const AppHeader({super.key, this.date, this.bottomOverlap = 0});
@@ -50,12 +50,12 @@ class AppHeader extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Bakanlık logosu filigranı — kurumsal doku.
+          // Kapari wordmark filigranı — kurumsal doku.
           Positioned(
-            right: -52,
-            bottom: -46,
+            right: -60,
+            bottom: -40,
             child: BrandLogo(
-              size: 230,
+              height: 132,
               color: AppColors.white.withValues(alpha: 0.07),
             ),
           ),
@@ -70,36 +70,21 @@ class AppHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Kurum kimliği ────────────────────────────────────────
-                Row(
+                // ── Marka kimliği ────────────────────────────────────────
+                // Wordmark markanın adını zaten taşır; yanına "Kapari Hazır
+                // Yemek" yazmak tekrar olurdu → yalnızca alt başlık.
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const BrandLogoTile(size: 46, elevated: false),
-                    AppSpacing.gapH12,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppConfig.hospitalName.toUpperCase(),
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
-                              height: 1.25,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppConfig.appSubtitle,
-                            style: TextStyle(
-                              color: AppColors.white.withValues(alpha: 0.75),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
+                    const BrandLogo(height: 30, color: AppColors.white),
+                    const SizedBox(height: 6),
+                    Text(
+                      AppConfig.appSubtitle,
+                      style: TextStyle(
+                        color: AppColors.white.withValues(alpha: 0.75),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],

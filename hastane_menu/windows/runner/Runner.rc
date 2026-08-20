@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "hastane_menu" "\0"
+            VALUE "CompanyName", "Kapari" "\0"
+            VALUE "FileDescription", "Kapari Hazir Yemek" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "hastane_menu" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Kapari. All rights reserved." "\0"
             VALUE "OriginalFilename", "hastane_menu.exe" "\0"
-            VALUE "ProductName", "hastane_menu" "\0"
+            VALUE "ProductName", "Kapari Hazir Yemek" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

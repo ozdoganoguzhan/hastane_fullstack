@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
+import 'package:hastane_menu/components/app_button.dart';
 import 'package:hastane_menu/components/async_status.dart';
 import 'package:hastane_menu/components/brand_logo.dart';
 import 'package:hastane_menu/components/page_header.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
-import 'package:hastane_menu/models/hospital_info.dart';
+import 'package:hastane_menu/core/state/session_state.dart';
+import 'package:hastane_menu/core/state/state_manager.dart';
+import 'package:hastane_menu/models/brand_info.dart';
 
 /// Yemekhane bilgileri sayfası (çalışma saatleri, konum, iletişim).
 ///
@@ -30,7 +33,9 @@ class InfoPage extends StatelessWidget {
               subtitle: 'Çalışma saatleri, konum ve iletişim',
             ),
           ),
-          _InfoCard(info: HospitalInfo.fromConfig()),
+          _InfoCard(info: BrandInfo.fromConfig()),
+          AppSpacing.gapV16,
+          const _SessionCard(),
           // AppSpacing.gapV16,
           // const _NetworkDebugCard(),
           AppSpacing.gapV24,
@@ -44,7 +49,7 @@ class InfoPage extends StatelessWidget {
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.info});
 
-  final HospitalInfo info;
+  final BrandInfo info;
 
   @override
   Widget build(BuildContext context) {
@@ -57,14 +62,8 @@ class _InfoCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const BrandLogoTile(size: 64, circular: true),
+          BrandLogo(height: 38),
           AppSpacing.gapV12,
-          Text(
-            info.hospitalName,
-            textAlign: TextAlign.center,
-            style: AppTypography.headingMedium,
-          ),
-          const SizedBox(height: 2),
           Text(info.subtitle, style: AppTypography.bodySmall),
           AppSpacing.gapV16,
           // Açıklama — yumuşak zeminli alıntı kutusu.
@@ -84,16 +83,16 @@ class _InfoCard extends StatelessWidget {
           AppSpacing.gapV16,
           _InfoRow(
             icon: Icons.access_time_rounded,
-            iconColor: AppColors.blue,
-            iconBackground: AppColors.blueSoft,
+            iconColor: AppColors.accent,
+            iconBackground: AppColors.accentSoft,
             title: 'Çalışma Saatleri',
             value: info.workingHours,
           ),
           AppSpacing.gapV8,
           _InfoRow(
             icon: Icons.place_rounded,
-            iconColor: AppColors.red,
-            iconBackground: AppColors.redSoft,
+            iconColor: AppColors.primary,
+            iconBackground: AppColors.primarySoft,
             title: 'Konum',
             value: info.location,
           ),
@@ -116,8 +115,8 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.value,
-    this.iconColor = AppColors.blue,
-    this.iconBackground = AppColors.blueSoft,
+    this.iconColor = AppColors.accent,
+    this.iconBackground = AppColors.accentSoft,
   });
 
   final IconData icon;
@@ -180,17 +179,7 @@ class _BrandFooter extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const BrandLogo(size: 15),
-        AppSpacing.gapH8,
-        const Text(
-          'T.C. Sağlık Bakanlığı',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
-            letterSpacing: 0.2,
-          ),
-        ),
+        const BrandLogo(height: 16),
       ],
     );
   }
@@ -265,12 +254,12 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(
-                  color: AppColors.redSoft,
+                  color: AppColors.primarySoft,
                   borderRadius: AppSpacing.borderRadiusSm,
                 ),
                 child: const Icon(
                   Icons.wifi_rounded,
-                  color: AppColors.red,
+                  color: AppColors.primary,
                   size: 20,
                 ),
               ),
@@ -291,7 +280,7 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
                   tooltip: 'Kopyala',
                   icon: const Icon(
                     Icons.copy_rounded,
-                    color: AppColors.red,
+                    color: AppColors.primary,
                     size: 20,
                   ),
                   onPressed: snapshot.hasData
@@ -303,7 +292,7 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
                 tooltip: 'Yenile',
                 icon: const Icon(
                   Icons.refresh_rounded,
-                  color: AppColors.red,
+                  color: AppColors.primary,
                   size: 20,
                 ),
                 onPressed: _reload,
@@ -337,5 +326,107 @@ class _NetworkDebugCardState extends State<_NetworkDebugCard> {
         ],
       ),
     );
+  }
+}
+
+/// Açık oturumu gösterip **çıkış** imkânı veren kart.
+///
+/// Çıkış eskiden yalnızca QR sheet'inin içindeydi; kullanıcının çıkmak için
+/// önce QR kodunu açması gerekiyordu. Buraya taşındı (bkz. AGENTS.md §14).
+/// Oturum yoksa hiç render edilmez — `AuthGate` zaten girişe döndürür.
+class _SessionCard extends StatelessWidget {
+  const _SessionCard();
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Çıkış yapılsın mı?'),
+        content: const Text(
+          'Oturumunuz kapatılacak ve yemekhane QR kodunuz görüntülenemeyecek. '
+          'Tekrar giriş yapmanız gerekir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Çıkış Yap',
+              style: TextStyle(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed ?? false) $get<SessionState>().logout();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return $get<SessionState>().session.builder((session) {
+      if (session == null) return const SizedBox.shrink();
+
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.card,
+          borderRadius: AppSpacing.borderRadiusXl,
+          boxShadow: AppSpacing.shadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.white,
+                    size: 22,
+                  ),
+                ),
+                AppSpacing.gapH12,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.fullName,
+                        style: AppTypography.headingMedium,
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        session.isDemo
+                            ? 'Test oturumu — örnek veriler'
+                            : '${session.title} • ${session.maskedPhone}',
+                        style: AppTypography.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            AppSpacing.gapV16,
+            AppButton(
+              label: 'Çıkış Yap',
+              icon: Icons.logout_rounded,
+              variant: AppButtonVariant.soft,
+              onPressed: () => _confirmLogout(context),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

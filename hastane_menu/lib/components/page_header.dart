@@ -3,7 +3,7 @@ import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/constants/app_typography.dart';
 
-/// Sayfa başlığı — sol tarafta kırmızı degrade aksan çubuğu, büyük başlık ve
+/// Sayfa başlığı — sol tarafta lacivert degrade aksan çubuğu, büyük başlık ve
 /// opsiyonel alt satır. Tüm sekme sayfalarında ortak kurumsal kimlik sağlar.
 class PageHeader extends StatelessWidget {
   const PageHeader({
@@ -26,7 +26,7 @@ class PageHeader extends StatelessWidget {
           width: 4,
           height: subtitle == null ? 22 : 34,
           decoration: const BoxDecoration(
-            gradient: AppColors.redGradient,
+            gradient: AppColors.primaryGradient,
             borderRadius: BorderRadius.all(Radius.circular(2)),
           ),
         ),

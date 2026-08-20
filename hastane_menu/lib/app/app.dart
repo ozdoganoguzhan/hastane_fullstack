@@ -15,7 +15,7 @@ class HastaneMenuApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hastane Menü',
+      title: 'Kapari Hazır Yemek',
       debugShowCheckedModeBanner: false,
       theme: HospitalTheme.light(),
       home: const NetworkGate(child: AuthGate(child: ShellPage())),

@@ -15,7 +15,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Hastane ağında olduğunuzu doğrulamak için yerel ağ erişimi gerekiyor.</string>
 	<key>CFBundleDisplayName</key>
-	<string>Hastane Menü</string>
+	<string>Kapari Hazır Yemek</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

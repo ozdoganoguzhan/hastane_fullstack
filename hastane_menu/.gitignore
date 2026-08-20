@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Play Store imzalama — GİZLİ, asla commit edilmez (bkz. AGENTS.md §11).
+/android/key.properties
+*.jks
+*.keystore

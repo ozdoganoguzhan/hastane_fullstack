@@ -93,7 +93,7 @@ class _TotalCaloriePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 5),
       decoration: BoxDecoration(
-        gradient: AppColors.redGradientLight,
+        gradient: AppColors.primaryGradientLight,
         borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
         boxShadow: AppSpacing.shadowSm,
       ),

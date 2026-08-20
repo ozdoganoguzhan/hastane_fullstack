@@ -88,14 +88,14 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           _QuickAction(
                             icon: Icons.calendar_month_rounded,
-                            gradient: AppColors.redGradient,
+                            gradient: AppColors.primaryGradient,
                             label: 'Menü\nTakvimi',
                             onTap: () => widget.onNavigate(1),
                           ),
                           AppSpacing.gapH12,
                           _QuickAction(
                             icon: Icons.qr_code_2_rounded,
-                            gradient: AppColors.blueGradient,
+                            gradient: AppColors.accentGradient,
                             label: 'Personel\nKartım',
                             onTap: () => LoginSheet.show(context),
                           ),
@@ -133,7 +133,7 @@ class _QuickAction extends StatelessWidget {
   static const LinearGradient indigoGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.dinner, AppColors.blueDark],
+    colors: [AppColors.dinner, AppColors.accentDark],
   );
 
   final IconData icon;

@@ -13,9 +13,9 @@
 ///     false → GERÇEK Turkcell HBYS host'ları (canlı) — hiçbir dummy kalmaz
 sealed class AppConfig {
   // ══════════════════════════════════════════════════════════════════════
-  // KURUM BİLGİLERİ
+  // MARKA BİLGİLERİ
   // ══════════════════════════════════════════════════════════════════════
-  static const String hospitalName = 'Eskişehir Şehir Hastanesi';
+  static const String brandName = 'Kapari Hazır Yemek';
   static const String appSubtitle = 'Yemekhane Menü Sistemi';
 
   // ══════════════════════════════════════════════════════════════════════
@@ -162,7 +162,7 @@ sealed class AppConfig {
 
   /// Engelleme ekranında kullanıcıya gösterilecek ağ adı.
   static String get displayNetworkName =>
-      allowedSsids.isNotEmpty ? allowedSsids.first : hospitalName;
+      allowedSsids.isNotEmpty ? allowedSsids.first : brandName;
 
   // === INTRANET ERİŞİLEBİLİRLİK KONTROLÜ (opsiyonel ek katman) ===
 

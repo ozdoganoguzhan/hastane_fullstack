@@ -104,19 +104,8 @@ class _CheckingScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const BrandLogoTile(size: 96, circular: true),
+                    const BrandLogo(height: 46),
                     AppSpacing.gapV20,
-                    const Text(
-                      AppConfig.hospitalName,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textStrong,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
                     const Text(
                       AppConfig.appSubtitle,
                       style: TextStyle(
@@ -131,7 +120,7 @@ class _CheckingScreen extends StatelessWidget {
                       height: 26,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.6,
-                        color: AppColors.red,
+                        color: AppColors.primary,
                       ),
                     ),
                     AppSpacing.gapV16,
@@ -152,17 +141,7 @@ class _CheckingScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const BrandLogo(size: 14),
-                  AppSpacing.gapH8,
-                  const Text(
-                    'T.C. Sağlık Bakanlığı',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+                  const BrandLogo(height: 15),
                 ],
               ),
             ),

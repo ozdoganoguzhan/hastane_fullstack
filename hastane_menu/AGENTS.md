@@ -1,4 +1,4 @@
-# Hastane Menü — Personel Yemekhane Menü Uygulaması
+# Kapari Hazır Yemek — Personel Yemekhane Menü Uygulaması
 
 > Bu dosya, **hastane_menu** projesinde çalışan tüm yapay zeka agentları ve
 > geliştiriciler için tek kaynaktır (single source of truth). Projeye yeni
@@ -143,6 +143,34 @@ widget'ı bunu dinler. `connectivity` değiştikçe kapı otomatik yeniden çal�
 | `wrongWifi` | WiFi var ama izinli değil | Engelleme |
 | `permissionDenied` | SSID izni reddedildi (Android) | Engelleme + "İzin Ver" |
 | `locationOff` | Konum servisleri kapalı (Android) | Engelleme + "Konum servislerini aç" |
+| `ssidUnavailable` | İzin VAR, konum AÇIK — OS yine de ağ adını vermiyor | Engelleme + "Uygulama ayarlarını aç" |
+
+> ⚠️ `permissionDenied` ile `ssidUnavailable` **AYRI** durumlardır. İzin vermiş
+> kullanıcıya "konum izni gerekiyor" demek çıkışı olmayan bir döngüdür. Teşhis
+> `WifiGuard._diagnoseUnreadable()` içinde sırayla yapılır: izin yok →
+> `permissionDenied`, konum servisi kapalı → `locationOff`, ikisi de tamam ama
+> SSID hâlâ okunamıyor → `ssidUnavailable`. **Varsayıma düşülmez.**
+
+Engelleme ekranı ayrıca, ağ adı okunabiliyorsa **şu an bağlı olunan ağı** da
+çip olarak gösterir ("Bağlı olduğunuz ağ: X") — kullanıcı neden engellendiğini
+tahmin etmek zorunda kalmaz. Okunamıyorsa bu çip gizlenir ("bilmiyorum"u
+"yanlış ağdasın" gibi sunmamak için).
+
+### 4.2.1 ⭐ Demo Oturumu — Ağ Kapısının Tek İstisnası
+
+`AppConfig.demoBypassesNetworkGate` (varsayılan `true`) açıkken engelleme
+ekranında **"Test girişi ile devam et"** çıkışı görünür → `LoginPage(demoOnly:
+true)` açılır (yalnızca kullanıcı adı/şifre; telefon sekmesi gizlenir çünkü OTP
+akışı zaten HBYS'ye ulaşamaz). Giriş başarılıysa `isDemo` oturum açılır ve
+`NetworkGate` ağ durumundan bağımsız olarak uygulamayı render eder.
+
+**Neden güvenlik açığı değil (bkz. §4.0):** asıl kapı intranet-only veri
+erişimidir. `MenuService` `isDemo` oturumda HBYS'yi hiç çağırmaz;
+`DemoMenuSource`'tan örnek menü döner ve bu veri **önbelleğe yazılmaz** (gerçek
+oturuma sızmasın diye). Yani demo oturum hiçbir gerçek hastane verisine
+erişmez.
+
+Kapatmak için: `flutter build appbundle --dart-define=DEMO_BYPASSES_NETWORK_GATE=false`
 
 ### 4.3 İlgili Dosyalar
 
@@ -152,19 +180,35 @@ widget'ı bunu dinler. `connectivity` değiştikçe kapı otomatik yeniden çal�
 | `lib/core/network/wifi_guard.dart` | Kapı servisi + `WifiGuardStatus` enum |
 | `lib/components/network_gate.dart` | Uygulamayı saran widget — sadece `onAllowedWifi`'da `child` |
 | `lib/components/wifi_blocked_screen.dart` | Tam ekran engelleme ekranı (Türkçe) |
+| `lib/data/demo_menu_source.dart` | Demo oturumu için örnek menü (ağ dışı test — §4.2.1) |
 | `lib/app/service_locator.dart` | `WifiGuard` singleton kaydı |
 | `lib/app/app.dart` | `NetworkGate(child: AuthGate(child: ShellPage()))` ile sarma |
 
 ### 4.4 Android Gereksinimleri
 
 `android/app/src/main/AndroidManifest.xml` (kuruldu) izinleri içerir:
-`ACCESS_WIFI_STATE`, `ACCESS_NETWORK_STATE`, `ACCESS_FINE_LOCATION`
-(`maxSdkVersion=32`), `NEARBY_WIFI_DEVICES` (`neverForLocation`), `INTERNET`.
+`ACCESS_WIFI_STATE`, `ACCESS_NETWORK_STATE`, `ACCESS_FINE_LOCATION`,
+`NEARBY_WIFI_DEVICES` (`neverForLocation` **YOK**), `INTERNET`.
 
-> ⚠️ **KRİTİK:** SSID okumak için cihazın **Konum Servisleri AÇIK** olmalıdır
+> ⚠️ **KRİTİK 1 — `ACCESS_FINE_LOCATION`'a `maxSdkVersion` KOYMAYIN.**
+> Bağlı ağın SSID/BSSID'i (`WifiManager.getConnectionInfo`) HER API seviyesinde
+> konum iznine bağlıdır; `NEARBY_WIFI_DEVICES` bunun **yerine geçmez**, ek
+> olarak istenir. `maxSdkVersion=32` konulursa Android 13+ cihazlarda
+> `getWifiName()` kalıcı olarak `<unknown ssid>` döner ve kapı **hiçbir zaman
+> açılmaz** — kullanıcı izni verse bile. (Bu hata bir kez yaşandı.)
+>
+> Aynı sebeple `WifiGuard.requestPermission()` Android 13+'ta **iki izni
+> birden** ister: `locationWhenInUse` + `nearbyWifiDevices`.
+
+> ⚠️ **KRİTİK 2:** SSID okumak için cihazın **Konum Servisleri AÇIK** olmalıdır
 > (izin vermek tek başına yetmez). Kapalıysa SSID `null` / `<unknown ssid>`
 > döner → `locationOff` durumu. "getWifiName null dönüyor" sorununun #1 sebebi
 > budur.
+
+> ℹ️ İzin isteği sonrası kapı **kendiliğinden** yeniden değerlendirilir
+> (`requestPermission()` sonunda `refresh()` çağrılır); kullanıcının ayrıca
+> "Tekrar Dene"ye basması gerekmez. Kullanıcı "bir daha sorma" demişse
+> `openAppSettings()` ile ayarlara yönlendirilir — aksi hâlde buton ölü görünür.
 
 ### 4.5 iOS Gereksinimleri
 
@@ -205,6 +249,8 @@ static const bool   enableReachabilityCheck = false;    // intranet probe açık
 | Konum servisi kapalı (Android) | `locationOff` — "Konum servislerini aç" |
 | iOS entitlement yok / Simulator | SSID `null` → reachability / bağlantı-tipine düşer |
 | Android 14 transient null | 400ms debounce + connectivity re-check ile çözülür |
+| İzin verildi ama SSID hâlâ okunamıyor | `ssidUnavailable` — "konum izni gerekiyor" DEMEZ; ayarlara yönlendirir |
+| Hastane ağı dışında test/demo | Engelleme ekranından "Test girişi ile devam et" → `isDemo` oturum, örnek menü (§4.2.1) |
 
 ### 4.8 Sonraki Sertleştirme (P1/P2 — henüz yapılmadı)
 
@@ -245,7 +291,7 @@ lib/
 │
 ├── models/
 │   ├── menu_models.dart               # MealType, MenuDish, Meal, DailyMenu (HBYS yapısı — §15)
-│   ├── hospital_info.dart             # Bilgi sayfası modeli (AppConfig'ten)
+│   ├── brand_info.dart                # Bilgi sayfası modeli (AppConfig'ten)
 │   └── staff_session.dart             # StaffSession (personnelId, cardNo, isDemo, ...)
 │
 ├── data/
@@ -285,37 +331,54 @@ lib/
                                        #    gün şeridi + PageView gün sayfaları (tek görünüm)
 
 assets/
-└── logo-tr.png                        # ⭐ T.C. Sağlık Bakanlığı logosu (pubspec'te kayıtlı)
+└── kapari.png                         # ⭐ Kapari wordmark 717×348 (pubspec'te kayıtlı)
 ```
 
 ---
 
-## 6. Tema ve Tasarım Sistemi (2026-07 Revamp)
+## 6. Tema ve Tasarım Sistemi (2026-08 Kapari rebrand)
 
-Tasarım dili: **kurumsal premium** — T.C. Sağlık Bakanlığı kırmızısı + lacivert
-+ yumuşak nötr zemin; katmanlı gölgeler, degrade hero'lar, logo filigranları,
-shimmer iskeletler ve mikro animasyonlar.
+Tasarım dili: **kurumsal premium** — Kapari kurumsal laciverti + logodaki
+camgöbeği aksan + yumuşak nötr zemin; katmanlı gölgeler, degrade hero'lar, logo
+filigranları, shimmer iskeletler ve mikro animasyonlar.
+
+> ⚠️ **2026-08 rebrand:** Uygulama artık Eskişehir Şehir Hastanesi / T.C. Sağlık
+> Bakanlığı kimliğiyle DEĞİL, **Kapari Hazır Yemek** kimliğiyle sunulur. Eski
+> kırmızı palet ve Bakanlık logosu tamamen kaldırılmıştır; `AppColors.red*` /
+> `AppColors.blue*` token'ları da yoktur (bkz. aşağıdaki isimler).
 
 ### Renk Paleti (`app_colors.dart` — `sealed class AppColors`)
 
+Lacivert ve camgöbeği değerleri **logodan örneklenmiştir** (`assets/kapari.png`).
+
 ```dart
-red      = #C8102E  redLight = #E8253F  redDark = #A00D24  redDeep = #7E0A1E
-redSoft  = #FDECEF  (çip/rozet zemini)   redSoftBorder = #F6D3DA
-blue     = #1A5CAD  blueLight= #2E7BD6  blueDark= #134A8A  blueSoft= #EAF2FB
+primary     = #19227D  primaryLight = #2E3AA6  primaryDark = #121A5E  primaryDeep = #0B1140
+primarySoft = #EDEFF9  (çip/rozet zemini)      primarySoftBorder = #D5DAF0
+accent      = #05A1E6  accentLight  = #3CBAF0  accentDark  = #0277B8  accentSoft  = #E4F4FD
 background = #F4F6FA   card = #FFFFFF   surfaceTint = #F7F8FC
 textStrong = #0F172A   text = #1E293B   textLight = #64748B   textMuted = #94A3B8
 border = #E4E8F1   divider = #EDF0F6   + semantic (success/warning/error/info)
-// Öğün aksanları: breakfast(#D97706), lunch(#C8102E), dinner(#4F46E5) + *Soft
-// Degradeler: redGradient, redGradientLight, heroGradient (3 duraklı), blueGradient
+// Öğün aksanları: breakfast(#D97706), lunch(#0277B8), dinner(#6D28D9) + *Soft
+// Degradeler: primaryGradient, primaryGradientLight, heroGradient (3 duraklı), accentGradient
 ```
 
-### Marka (Bakanlık Logosu)
+> `error*` / `errorLight` YALNIZCA gerçek hata durumları içindir. Dekoratif
+> daire/rozet zeminlerinde kullanmayın — lacivert temada pembe leke bırakır
+> (bir kez yaşandı: engelleme ekranındaki ikon halkası).
 
-- `assets/logo-tr.png` **pubspec'te kayıtlıdır**; HER kullanım
-  `components/brand_logo.dart` üzerinden yapılır (doğrudan `Image.asset` YASAK):
-  - `BrandLogo(size, color)` — çıplak logo; `color` ile filigran/tek renk.
-  - `BrandLogoTile(size, circular)` — beyaz kutuda kurumsal rozet.
-- Kırmızı hero'larda filigran: `BrandLogo(color: white.withValues(alpha: .07))`.
+### Marka (Kapari logosu)
+
+- `assets/kapari.png` **pubspec'te kayıtlıdır**; HER kullanım
+  `components/brand_logo.dart` üzerinden yapılır (doğrudan `Image.asset` YASAK).
+- ⚠️ **Logo KARE DEĞİLDİR** — 717×348, yaklaşık 2:1 bir wordmark'tır. Bu yüzden
+  API ölçüyü **yükseklikten** alır:
+  - `BrandLogo(height, color)` — çıplak wordmark; `color` ile filigran/tek renk.
+  - `BrandLogoTile(size)` — beyaz yuvarlatılmış **kare** rozet (daire DEĞİL;
+    geniş wordmark daireye sığmaz).
+- Lacivert hero'larda: `BrandLogo(color: AppColors.white)` — logo lacivert
+  olduğu için renkli zeminde kendi rengiyle okunmaz.
+- Wordmark markanın adını zaten taşır → **yanına "Kapari Hazır Yemek" yazmayın**;
+  gerekiyorsa `AppConfig.appSubtitle` gösterin.
 
 ### Paylaşılan Premium Primitifler
 
@@ -326,7 +389,7 @@ border = #E4E8F1   divider = #EDF0F6   + semantic (success/warning/error/info)
 | `Shimmer` + `SkeletonBox` | Yükleme iskeletleri (`MenuLoadingCard` bunları kullanır) |
 | `SegmentedTabs` | Kayan beyaz thumb'lı segment (menü + giriş ekranı) |
 | `PageHeader` | Aksan çubuklu sayfa başlığı |
-| `SectionHeader` | Bölüm başlığı + kırmızı eylem çipi |
+| `SectionHeader` | Bölüm başlığı + lacivert eylem çipi |
 
 ### Diğer
 
@@ -427,15 +490,51 @@ yeterlidir (örn. `MenuPage`, `WeeklyView`).
 
 | Alan | Değer |
 | ---- | ----- |
-| Android namespace / applicationId | `com.ozi.hastane_menu` |
-| iOS bundle identifier | `com.ozi.hastaneMenu` |
-| Görünen ad (Android `android:label`) | **Hastane Menü** |
-| Görünen ad (iOS `CFBundleDisplayName`) | **Hastane Menü** |
+| Android namespace / applicationId | `com.kapari.eskhMenu` |
+| iOS bundle identifier | `com.kapari.eskhMenu` (Android ile AYNI) |
+| Görünen ad (Android `android:label`) | **Kapari Hazır Yemek** |
+| Görünen ad (iOS `CFBundleDisplayName`) | **Kapari Hazır Yemek** |
 
-> Başka bir hastane/marka için: `android/app/build.gradle.kts` (namespace +
-> applicationId), `android/.../kotlin/com/ozi/.../MainActivity.kt` (package),
+> Başka bir kurum/marka için: `android/app/build.gradle.kts` (namespace +
+> applicationId), `android/.../kotlin/com/kapari/eskhMenu/MainActivity.kt` (package),
 > `ios/Runner.xcodeproj/project.pbxproj` (`PRODUCT_BUNDLE_IDENTIFIER`),
 > manifest `android:label` ve Info.plist `CFBundleDisplayName` güncellenir.
+
+### 10.1 ⭐ Uygulama İkonu (launcher icon)
+
+Kaynak marka görseli: `assets/kapari.png` (717×348 wordmark). İkon setleri
+(2026-08) dışarıda bir ikon üreticisiyle hazırlanıp projeye eklenmiştir.
+
+**Android — ikonların YERİ (dikkat!):**
+
+```
+android/app/src/main/res/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/
+    ic_launcher.png            # legacy  48/72/96/144/192 px
+    ic_launcher_round.png      # yuvarlak maske
+    ic_launcher_foreground.png # adaptive ön plan
+android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml   # adaptive tanım
+android/app/src/main/res/values/ic_launcher_background.xml   # zemin (#ffffff)
+```
+
+> ⚠️ **BİR KEZ YAŞANDI:** online ikon üreticileri çıktıyı `mipmap-*` klasörleri
+> hâlinde verir; bunlar `android/` köküne kopyalanırsa Gradle **görmez** ve
+> uygulama Flutter'ın varsayılan mavi logosuyla derlenir. Klasörler MUTLAKA
+> `android/app/src/main/res/` altına açılmalıdır.
+>
+> Kontrol: `unzip -l build/app/outputs/flutter-apk/app-*.apk | grep mipmap`
+> — dosya boyutları birkaç yüz bayt ise hâlâ Flutter varsayılanıdır.
+
+**Adaptive ikon.** `ic_launcher.xml` beyaz zemin + `@mipmap/ic_launcher_foreground`
+kullanır. Ön plan görselinin güvenli alan (108dp tuvalde ortadaki 72dp) payı
+görselin KENDİSİNDE olmalıdır; üretici bunu zaten uygular. `ic_launcher.xml`
+içinden `@mipmap/ic_launcher`'a referans **verilemez** (aynı kaynak adı → döngü),
+bu yüzden ayrı `ic_launcher_foreground` adı vardır.
+
+**iOS:** `ios/Runner/Assets.xcassets/AppIcon.appiconset/` (Contents.json + PNG
+seti). Xcode gerektirir, Windows'ta doğrulanamaz.
+
+**Play Console:** mağaza listelemesi için ayrıca **512×512** ikon yüklenir; bu
+APK/AAB içinde DEĞİLDİR.
 
 ---
 
@@ -446,7 +545,8 @@ flutter pub get               # bağımlılıklar
 flutter analyze               # statik analiz (sıfır uyarı beklenir)
 flutter test                  # widget testleri
 flutter run                   # geliştirme
-flutter build apk --release   # Android release
+flutter build apk --release   # Android release (test/yan yükleme)
+flutter build appbundle --release  # ⭐ Play Store çıktısı (bkz. §11.1)
 flutter build ios --release   # iOS release (entitlement için §4.5)
 ```
 
@@ -454,6 +554,47 @@ flutter build ios --release   # iOS release (entitlement için §4.5)
 > cihazda, konum servisleri açıkken test edin. Hızlı denemek için geçici olarak
 > `AppConfig.allowedSsids`'e kendi test ağınızı ekleyin veya `enforceSsid`'i
 > `false` yapın (bağlantı-tipi-only kapı).
+
+### 11.1 ⭐ Play Store — İmzalama ve Yayın
+
+```bash
+flutter build appbundle --release   # Play Console'a yüklenen çıktı (.aab)
+```
+
+Çıktı: `build/app/outputs/bundle/release/app-release.aab`
+
+**Yükleme (upload) anahtarı:**
+
+| | |
+| - | - |
+| Keystore | `C:\Users\Overl\hastane-menu-upload.jks` (repo DIŞINDA, PKCS12) |
+| Alias | `hastane-upload` |
+| Sahip | `CN=Oguzhan Ozdogan, O=Estep, C=TR, EMAILADDRESS=oguzhanemre.ozdogan@gmail.com` |
+| Geçerlilik | 19.08.2026 → 04.01.2054 |
+| Şifreler | `android/key.properties` (GİZLİ, `.gitignore`'da) |
+
+`android/app/build.gradle.kts` `key.properties`'i okur ve release imzasını
+oradan kurar. **Dosya yoksa** release derlemesi debug anahtarına düşer — o çıktı
+mağazaya yüklenemez, hata alırsınız.
+
+> ⚠️ **KEYSTORE'U KAYBETMEYİN.** Kaybederseniz uygulamayı bir daha
+> güncelleyemezsiniz (Play App Signing kullanılıyorsa Google'dan upload key
+> sıfırlama istenebilir, ama bu ekstra süreçtir). `.jks` + `key.properties`
+> yedeği bir parola yöneticisinde/güvenli diskte tutulmalıdır.
+
+İmza doğrulama:
+
+```bash
+jarsigner -verify -certs build/app/outputs/bundle/release/app-release.aab
+# "jar verified." + sertifika sahibi CN=Oguzhan Ozdogan görünmeli.
+# "Invalid certificate chain" uyarısı NORMALDİR (self-signed upload key).
+```
+
+**Mağaza görselleri:** `store/` klasörü (ekran görüntüleri + eksik kalanların
+listesi). Ayrıntı: `store/README.md`.
+
+**Sürüm numarası:** `pubspec.yaml` → `version: 1.0.0+1`. `+` sonrası
+`versionCode`'dur ve her yüklemede ARTIRILMALIDIR.
 
 ---
 
@@ -507,13 +648,29 @@ Giriş ekranında bir segmented seçici ile **iki yöntem** sunulur:
 - Başarılıysa `StaffSession.isDemo == true` olan bir oturum döner. Bu oturumda
   **gerçek API'ye gidilmez**; tüm içerik `lib/data/` dummy kaynaklarından gelir.
   Gerçek API entegrasyonunda demo akışını korumak için bu bayrağa bakılır.
+- ⭐ Demo oturumu **ağ kapısını atlar** (`AppConfig.demoBypassesNetworkGate`):
+  hastane ağı dışındayken engelleme ekranındaki "Test girişi ile devam et"
+  bağlantısı `LoginPage(demoOnly: true)` açar. Ayrıntı: §4.2.1.
+- `MenuService` `isDemo` oturumda HBYS'yi **çağırmaz**; `DemoMenuSource`'tan
+  deterministik örnek menü döner ve bu veri önbelleğe **yazılmaz**.
+- Şifre karşılaştırması sabit sürelidir ve 5 hatalı denemeden sonra demo girişi
+  uygulama yeniden açılana kadar kilitlenir (mağaza sürümünde açık kalacağı için).
 
 ### 14.2 Personel QR Kodu (oturum sonrası)
 
 Oturum açıkken alt navigasyonun **ortasındaki buton** ("QR Kod") `LoginSheet`'i
 **doğrudan QR adımında** açar: `personnelId` içeren QR kart gösterilir (yemekhane
-girişinde okutulur). Sheet içindeki "Çıkış Yap" oturumu kapatır → `AuthGate`
-otomatik olarak `LoginPage`'e döner.
+girişinde okutulur). Sheet yalnızca QR gösterir; **"Çıkış Yap" burada DEĞİLDİR**.
+
+### 14.3 Çıkış (Oturum Kapatma)
+
+Çıkış **Bilgi sayfasındaki oturum kartındadır** (`InfoPage._SessionCard`):
+personelin adı/unvanı + maskeli telefonu (demo oturumda "Test oturumu" rozeti)
+ve altında "Çıkış Yap" butonu. Onay diyaloğu sorar, sonra `SessionState.logout()`
+çağırır → `AuthGate` otomatik olarak `LoginPage`'e döner.
+
+> Neden burada: çıkış eskiden yalnızca QR sheet'inin içindeydi, yani çıkmak için
+> önce QR kodunu açmak gerekiyordu. Ayarların doğal yeri Bilgi sayfasıdır.
 
 ### Durum Yönetimi
 - `SessionState` (`lib/core/state/session_state.dart`) bir
@@ -527,6 +684,7 @@ otomatik olarak `LoginPage`'e döner.
 | `lib/components/auth_gate.dart` | ⭐ Oturum kapısı — giriş yoksa `LoginPage` |
 | `lib/pages/login_page.dart` | ⭐ Tam ekran giriş (telefon + kullanıcı adı/şifre) |
 | `lib/components/login_sheet.dart` | Oturum sonrası QR kart sheet'i |
+| `lib/pages/info_page.dart` | Bilgi sayfası — ⭐ oturum kartı + **Çıkış Yap** (§14.3) |
 | `lib/components/otp_input.dart` | 6 haneli kod giriş alanı |
 | `lib/components/staff_qr_view.dart` | QR kart (`qr_flutter` → `QrImageView`) |
 | `lib/data/auth_service.dart` | `requestOtp` / `verifyOtp` / `loginWithCredentials` — ⚠️ DUMMY |
