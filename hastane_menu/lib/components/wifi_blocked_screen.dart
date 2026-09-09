@@ -121,20 +121,25 @@ class WifiBlockedScreen extends StatelessWidget {
                           child: Text(_secondaryAction!.label),
                         ),
                       ],
-                      // Ağ dışındayken tek çıkış yolu: test/demo oturumu.
+                      // Ağ dışındayken tek çıkış yolu: yönetici (demo) oturumu.
+                      // ⚠️ Bu teknik olarak DEMO oturumudur (örnek veri gösterir);
+                      // son kullanıcıya "test" gibi görünmesin diye "Yönetici"
+                      // olarak sunulur. Davranış değişmedi, yalnızca etiket.
                       if (onDemoLogin != null) ...[
                         AppSpacing.gapV16,
                         const Divider(color: AppColors.divider, height: 1),
                         AppSpacing.gapV12,
                         TextButton.icon(
                           onPressed: onDemoLogin,
-                          icon: const Icon(Icons.science_rounded, size: 18),
-                          label: const Text('Test girişi ile devam et'),
+                          icon: const Icon(
+                            Icons.admin_panel_settings_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Yönetici girişi'),
                         ),
                         AppSpacing.gapV4,
                         const Text(
-                          'Test oturumunda gerçek hastane verisi değil, '
-                          'örnek içerik gösterilir.',
+                          'Yalnızca yetkili personel içindir.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 11.5,

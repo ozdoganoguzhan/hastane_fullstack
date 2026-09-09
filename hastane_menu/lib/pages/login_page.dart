@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hastane_menu/components/app_button.dart';
 import 'package:hastane_menu/components/brand_logo.dart';
 import 'package:hastane_menu/components/otp_input.dart';
 import 'package:hastane_menu/components/segmented_tabs.dart';
+import 'package:hastane_menu/components/error_banner.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_config.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/state/session_state.dart';
+import 'package:hastane_menu/core/utils/phone_input_formatter.dart';
 import 'package:hastane_menu/core/state/state_manager.dart';
 import 'package:hastane_menu/data/auth_service.dart';
 
@@ -54,6 +55,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   bool _obscurePassword = true;
   String? _error;
+  String? _errorDetails;
   String _code = '';
 
   @override
@@ -71,13 +73,16 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  String get _phone => _phoneController.text.trim();
+  /// Alanın 10 haneli, biçimlendirilmemiş hâli (boşluklar olmadan).
+  String get _phone =>
+      TurkishPhoneInputFormatter.digitsOf(_phoneController.text);
 
   void _switchMethod(_Method method) {
     if (_method == method || _loading) return;
     setState(() {
       _method = method;
       _error = null;
+      _errorDetails = null;
     });
   }
 
@@ -86,6 +91,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetails = null;
     });
     try {
       await _auth.requestOtp(_phone);
@@ -94,7 +100,10 @@ class _LoginPageState extends State<LoginPage> {
         _code = '';
       });
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _errorDetails = e.diagnostics;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -104,12 +113,16 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetails = null;
     });
     try {
       final session = await _auth.verifyOtp(phone: _phone, code: _code);
       _sessionState.setSession(session);
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _errorDetails = e.diagnostics;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -120,6 +133,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetails = null;
     });
     try {
       final session = await _auth.loginWithCredentials(
@@ -128,7 +142,10 @@ class _LoginPageState extends State<LoginPage> {
       );
       _sessionState.setSession(session);
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _errorDetails = e.diagnostics;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -196,7 +213,8 @@ class _LoginPageState extends State<LoginPage> {
                                 : _credentialsForm(),
                           ),
                         ),
-                        if (_error != null) _ErrorBanner(_error!),
+                        if (_error != null)
+          ErrorBanner(_error!, diagnostics: _errorDetails),
                         if (widget.onBack != null) ...[
                           AppSpacing.gapV8,
                           TextButton.icon(
@@ -241,6 +259,7 @@ class _LoginPageState extends State<LoginPage> {
             onChanged: (v) => setState(() {
               _code = v;
               _error = null;
+      _errorDetails = null;
             }),
             onCompleted: (v) {
               _code = v;
@@ -260,6 +279,7 @@ class _LoginPageState extends State<LoginPage> {
                 : () => setState(() {
                     _phoneStep = _PhoneStep.input;
                     _error = null;
+      _errorDetails = null;
                   }),
             child: const Text('Numarayı değiştir'),
           ),
@@ -275,10 +295,12 @@ class _LoginPageState extends State<LoginPage> {
           controller: _phoneController,
           keyboardType: TextInputType.phone,
           onChanged: (_) => setState(() => _error = null),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(11),
-          ],
+          inputFormatters: const [TurkishPhoneInputFormatter()],
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
           decoration: const InputDecoration(
             labelText: 'Telefon Numarası',
             hintText: '5XX XXX XX XX',
@@ -295,7 +317,9 @@ class _LoginPageState extends State<LoginPage> {
           label: 'Kod Gönder',
           icon: Icons.sms_rounded,
           loading: _loading,
-          onPressed: _phone.length >= 10 ? _sendOtp : null,
+          onPressed: _phone.length == TurkishPhoneInputFormatter.maxDigits
+              ? _sendOtp
+              : null,
         ),
       ],
     );
@@ -455,43 +479,6 @@ class _Footer extends StatelessWidget {
 }
 
 // ── Hata bandı ─────────────────────────────────────────────────────────────
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner(this.message);
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.base),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AppColors.errorLight,
-        borderRadius: AppSpacing.borderRadiusMd,
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 17,
-            color: AppColors.error,
-          ),
-          AppSpacing.gapH8,
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.error,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── Demo-only modu bilgilendirmesi ─────────────────────────────────────────
 /// Ağ kapısı dışında açılan giriş kartının başlığı — kullanıcının gerçek
@@ -511,12 +498,16 @@ class _DemoNotice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.science_rounded, size: 18, color: AppColors.warning),
+          const Icon(
+            Icons.admin_panel_settings_rounded,
+            size: 18,
+            color: AppColors.warning,
+          ),
           AppSpacing.gapH8,
           const Expanded(
             child: Text(
-              'Hastane ağı dışındasınız. Test hesabıyla giriş yapabilirsiniz; '
-              'gösterilen içerik örnek veridir.',
+              'Hastane ağı dışındasınız. Bu ekrandan yalnızca yönetici '
+              'hesabıyla giriş yapılabilir.',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.45,

@@ -23,8 +23,18 @@ sealed class AppConfig {
   // ══════════════════════════════════════════════════════════════════════
 
   /// `true`  → yerel mock sunucu (Turkcell dokümanı ile birebir).
-  /// `false` → GERÇEK Turkcell HBYS. Canlıya çıkarken bunu `false` yapın.
-  static const bool useMockHbys = true;
+  /// `false` → GERÇEK Turkcell HBYS.
+  ///
+  /// ⛔ **VARSAYILAN ARTIK `false`.** 2026-09'da mağazadaki sürüm `true` ile
+  ///    çıktı: tüm HBYS çağrıları [mockBaseUrl]'e (`10.0.2.2`) gitti, gerçek
+  ///    telefonda bu adres kimseye ait olmadığı için istekler asılı kaldı ve
+  ///    kullanıcı "HBYS isteği zaman aşımına uğradı" gördü. Bir daha olmasın
+  ///    diye canlı değer varsayılandır; mock'u AÇMAK isteyen build sırasında
+  ///    açıkça belirtir:
+  ///
+  ///    flutter run --dart-define=USE_MOCK_HBYS=true
+  static const bool useMockHbys =
+      bool.fromEnvironment('USE_MOCK_HBYS', defaultValue: false);
 
   /// Mock sunucunun adresi (geliştirme).
   ///
@@ -62,6 +72,38 @@ sealed class AppConfig {
 
   /// HBYS istekleri için zaman aşımı.
   static const Duration apiTimeout = Duration(seconds: 15);
+
+  /// Hata kutusunda teknik dökümü (aşama, istek, HTTP kodu, ham yanıt) göster.
+  ///
+  /// ⛔ **VARSAYILAN `false`** — mağaza sürümünde son kullanıcı ham sunucu
+  ///    yanıtı görmemeli. Saha teşhisi için AÇIK derleme alınır:
+  ///
+  ///    flutter build apk --release --dart-define=SHOW_ERROR_DIAGNOSTICS=true
+  ///
+  /// Varsayılanı `true` YAPMAYIN: `useMockHbys` tam da böyle unutulup canlıya
+  /// çıkmıştı (bkz. yukarısı).
+  static const bool showErrorDiagnostics =
+      bool.fromEnvironment('SHOW_ERROR_DIAGNOSTICS', defaultValue: false);
+
+  /// HBYS sunucularının kurum içi / kendinden imzalı TLS sertifikasını
+  /// doğrulamadan kabul et.
+  ///
+  /// Sunucular `*.eskisehir.yerel` zinciriyle geliyor; Android bu zinciri
+  /// tanımadığı için el sıkışma `HandshakeException` ile patlıyordu.
+  ///
+  /// ⚠️ Kabul YALNIZCA [hbysAuthBaseUrl] / [hbysMenuBaseUrl] /
+  ///    [hbysPersonnelBaseUrl] host'larına özeldir (bkz. `HbysTrust`); SMS
+  ///    gateway'i ve diğer bağlantılar normal doğrulamadan geçer.
+  ///
+  /// ⚠️ Bu, o üç sunucu için MITM'e karşı korumayı kaldırır: hastane ağındaki
+  ///    biri araya girip personel verisini görebilir. Kalıcı çözüm kurum
+  ///    CA'sını `assets/certs/hbys-ca.pem` olarak gömmektir
+  ///    (`tools/hbys-sertifika-al.ps1` çıkarır); o dosya konulduğunda bu
+  ///    bayrağı `false` yapıp gerçek doğrulamaya dönebilirsiniz:
+  ///
+  ///    flutter build apk --release --dart-define=TRUST_INTERNAL_HBYS_CERT=false
+  static const bool trustInternalHbysCertificate =
+      bool.fromEnvironment('TRUST_INTERNAL_HBYS_CERT', defaultValue: true);
 
   // ══════════════════════════════════════════════════════════════════════
   // SMS / OTP — 3G BİLİŞİM (uygulamadan doğrudan)

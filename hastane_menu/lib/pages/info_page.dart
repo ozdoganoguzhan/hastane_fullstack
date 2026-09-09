@@ -408,7 +408,7 @@ class _SessionCard extends StatelessWidget {
                       const SizedBox(height: 1),
                       Text(
                         session.isDemo
-                            ? 'Test oturumu — örnek veriler'
+                            ? 'Yönetici oturumu'
                             : '${session.title} • ${session.maskedPhone}',
                         style: AppTypography.bodySmall,
                       ),

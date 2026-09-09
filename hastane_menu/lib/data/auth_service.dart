@@ -83,12 +83,20 @@ class AuthService {
       response = await _client.personnelByPhone(cepTel);
       debugPrint('[OTP] 2/4 HBYS yanit: present=${response['present']}');
     } on HbysException catch (e) {
-      debugPrint('[OTP] ✗ HBYS hatasi: ${e.message}');
-      throw AuthException(e.message);
+      debugPrint('[OTP] ✗ HBYS hatasi: ${e.message}\n${e.diagnostics}');
+      throw AuthException(e.message, diagnostics: e.diagnostics);
     }
 
     if (response['present'] != true || response['data'] is! Map) {
-      throw const AuthException('Bu numaraya kayıtlı personel bulunamadı.');
+      // Sunucu cevap VERDİ ama kayıt yok — ham yanıtı göster ki alan adları
+      // beklediğimizden farklıysa (present/data) anlaşılsın.
+      throw AuthException(
+        'Bu telefon numarası sistemde kayıtlı değil.',
+        diagnostics:
+            'Aşama: 2) personel kartı sorgusu (cepTel=$cepTel)\n'
+            'HTTP: 200 (istek başarılı, kayıt bulunamadı)\n'
+            'Yanıt: ${_clip(response)}',
+      );
     }
 
     final data = response['data'] as Map;
@@ -96,7 +104,12 @@ class AuthService {
     final fullName = (data['adiSoyadi'] as String?)?.trim() ?? '';
 
     if (cardNo.isEmpty) {
-      throw const AuthException('Personel kart numarası alınamadı.');
+      throw AuthException(
+        'Personel kart numarası alınamadı.',
+        diagnostics:
+            'Aşama: 2) personel kartı sorgusu — personelKartNo boş\n'
+            'Yanıt: ${_clip(response)}',
+      );
     }
 
     // 2) Kod üret ve kaydı SMS'ten ÖNCE yaz → bekleme süresi anında devreye
@@ -107,7 +120,7 @@ class AuthService {
       code: code,
       issuedAt: DateTime.now(),
       expiresAt: DateTime.now().add(AppConfig.otpLifetime),
-      fullName: fullName.isEmpty ? 'Hastane Personeli' : fullName,
+      fullName: fullName.isEmpty ? 'Personel' : fullName,
       cardNo: cardNo,
     );
 
@@ -116,14 +129,27 @@ class AuthService {
     debugPrint('[OTP] 3/4 SMS gonderiliyor → ${AppConfig.smsBaseUrl} (kod: $code)');
     final result = await _sms.send(
       cepTel,
-      'Hastane Yemekhane dogrulama kodunuz: $code',
+      'Kapari Hazir Yemek dogrulama kodunuz: $code',
     );
     debugPrint('[OTP] 4/4 SMS sonuc: success=${result.success} → ${result.message}');
 
     if (!result.success) {
       _pending.remove(cepTel);
-      throw AuthException(result.message);
+      throw AuthException(
+        result.message,
+        diagnostics:
+            'Aşama: 4) SMS gönderimi (3G Bilişim)\n'
+            'İstek: GET ${AppConfig.smsBaseUrl}/SendSmsGet.aspx\n'
+            'origin=${AppConfig.smsOriginator}, to=$cepTel\n'
+            'Yanıt: ${result.message}',
+      );
     }
+  }
+
+  /// Teşhis kutusuna sığacak şekilde kısaltılmış gösterim.
+  static String _clip(Object? value, [int max = 400]) {
+    final s = '$value';
+    return s.length <= max ? s : '${s.substring(0, max)}… (${s.length} karakter)';
   }
 
   /// Kodu doğrular ve 1. adımda HBYS'den alınan personel bilgisiyle oturum açar.
@@ -163,6 +189,14 @@ class AuthService {
 
   /// Kullanıcı adı + şifre ile **demo** girişi (dummy data; HBYS'ye gitmez).
   ///
+  /// ⚠️ Arayüzde **"Yönetici girişi"** olarak sunulur — son kullanıcı "test"
+  /// ibaresi görmesin diye. Teknik olarak hâlâ demo oturumudur: `isDemo: true`
+  /// döner, `MenuService` gerçek API'yi atlar.
+  ///
+  /// Hata mesajı bilerek HBYS'ninkinden FARKLIDIR ("Yönetici bilgileri
+  /// hatalı"); aynı metin olsaydı sahadan gelen ekran görüntüsünde hatanın
+  /// cihazdan mı sunucudan mı geldiği ayırt edilemezdi (bir kez oldu).
+  ///
   /// Şifre karşılaştırması sabit süreli yapılır ve hatalı denemeler
   /// [_demoMaxAttempts] ile sınırlanır — mağaza sürümünde bu giriş açık
   /// kaldığı için kaba kuvvet denemesini pahalı hâle getirir.
@@ -173,7 +207,7 @@ class AuthService {
     await Future<void>.delayed(const Duration(milliseconds: 500));
 
     if (!AppConfig.demoLoginEnabled) {
-      throw const AuthException('Kullanıcı adı veya şifre hatalı.');
+      throw const AuthException('Yönetici bilgileri hatalı.');
     }
     if (_demoAttempts >= _demoMaxAttempts) {
       throw const AuthException(
@@ -190,16 +224,16 @@ class AuthService {
     if (userOk && passOk) {
       _demoAttempts = 0;
       return const StaffSession(
-        personnelId: 'DEMO-0001',
-        fullName: 'Test Kullanıcısı',
-        title: 'Demo Erişimi',
+        personnelId: 'YONETICI-0001',
+        fullName: 'Yönetici',
+        title: 'Yönetici Erişimi',
         phone: '0500 000 00 00',
         isDemo: true,
       );
     }
 
     _demoAttempts++;
-    throw const AuthException('Kullanıcı adı veya şifre hatalı.');
+    throw const AuthException('Yönetici bilgileri hatalı.');
   }
 
   /// Karşılaştırma süresinin girilen değere bağlı olmaması için tüm baytlar
@@ -242,8 +276,13 @@ class _PendingOtp {
 
 /// Giriş akışı hataları.
 class AuthException implements Exception {
-  const AuthException(this.message);
+  const AuthException(this.message, {this.diagnostics});
+
   final String message;
+
+  /// "Ne nerede patladı" dökümü (aşama, istek, HTTP kodu, ham yanıt).
+  /// Yalnızca `AppConfig.showErrorDiagnostics` açıkken ekrana basılır.
+  final String? diagnostics;
 
   @override
   String toString() => message;

@@ -1,0 +1,59 @@
+﻿
+======================================================================
+HBYS SERTIFIKA ZINCIRI - 09.09.2026 14:06:18
+======================================================================
+Bilgisayar : OGUZHAN
+Cikti      : D:\Repos\HASTANE\hastane_menu\tools\certs
+
+======================================================================
+HOST: www.google.com
+======================================================================
+  TLS protokolu : Tls13
+  Dogrulama     : None
+
+  ZINCIR (4 sertifika):
+
+   [0] SUNUCU (leaf)
+       Konu       : CN=www.google.com
+       Veren      : CN=WE2, O=Google Trust Services, C=US
+       Gecerlik   : 10.08.2026 - 02.11.2026
+       Parmak izi : 6DBCFE681DC47285FD8A530717FCD60E8BE28CE8
+         kaydedildi: www.google.com-0-www.google.com.cer
+
+   [1] ARA (intermediate)
+       Konu       : CN=WE2, O=Google Trust Services, C=US
+       Veren      : CN=GTS Root R4, O=Google Trust Services LLC, C=US
+       Gecerlik   : 13.12.2023 - 20.02.2029
+       Parmak izi : 4D9ACB313D73DA2E9EB451A7CF6309AF45C993C1
+         kaydedildi: www.google.com-1-WE2.cer
+
+   [2] ARA (intermediate)
+       Konu       : CN=GTS Root R4, O=Google Trust Services LLC, C=US
+       Veren      : CN=GlobalSign Root CA, OU=Root CA, O=GlobalSign nv-sa, C=BE
+       Gecerlik   : 15.11.2023 - 28.01.2028
+       Parmak izi : 932BED339AA69212C89375B79304B475490B89A0
+         kaydedildi: www.google.com-2-GTS_Root_R4.cer
+
+   [3] KOK (root CA)
+       Konu       : CN=GlobalSign Root CA, OU=Root CA, O=GlobalSign nv-sa, C=BE
+       Veren      : CN=GlobalSign Root CA, OU=Root CA, O=GlobalSign nv-sa, C=BE
+       Gecerlik   : 01.09.1998 - 28.01.2028
+       Parmak izi : B1BC968BD4F49D622AA89A81F2150152A41D829C
+         kaydedildi: www.google.com-3-GlobalSign_Root_CA.cer
+
+  [OK]   Windows'a gore zincir SORUNSUZ.
+         Windows eksik ara sertifikayi internetten indirmis olabilir (AIA).
+         Android bunu YAPAMAZ; asagidaki hbys-ca.pem yine de gomulmelidir.
+
+======================================================================
+BIRLESIK CA PAKETI (uygulamaya gomulecek dosya)
+======================================================================
+  [OK]   3 adet CA sertifikasi yazildi:
+         D:\Repos\HASTANE\hastane_menu\tools\hbys-ca.pem
+
+======================================================================
+BITTI - SUNU GONDER
+======================================================================
+  1) D:\Repos\HASTANE\hastane_menu\tools\hbys-ca.pem
+  2) D:\Repos\HASTANE\hastane_menu\tools\certs  (klasorun tamami)
+  3) D:\Repos\HASTANE\hastane_menu\tools\hbys-sertifika-raporu.txt

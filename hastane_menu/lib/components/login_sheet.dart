@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hastane_menu/components/app_button.dart';
 import 'package:hastane_menu/components/otp_input.dart';
 import 'package:hastane_menu/components/staff_qr_view.dart';
+import 'package:hastane_menu/components/error_banner.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
 import 'package:hastane_menu/core/state/session_state.dart';
+import 'package:hastane_menu/core/utils/phone_input_formatter.dart';
 import 'package:hastane_menu/core/state/state_manager.dart';
 import 'package:hastane_menu/data/auth_service.dart';
 
@@ -38,6 +39,7 @@ class _LoginSheetState extends State<LoginSheet> {
   late _Step _step = _sessionState.isLoggedIn ? _Step.qr : _Step.phone;
   bool _loading = false;
   String? _error;
+  String? _errorDetails;
   String _code = '';
 
   @override
@@ -46,12 +48,15 @@ class _LoginSheetState extends State<LoginSheet> {
     super.dispose();
   }
 
-  String get _phone => _phoneController.text.trim();
+  /// Alanın 10 haneli, biçimlendirilmemiş hâli (boşluklar olmadan).
+  String get _phone =>
+      TurkishPhoneInputFormatter.digitsOf(_phoneController.text);
 
   Future<void> _sendOtp() async {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetails = null;
     });
     try {
       await _auth.requestOtp(_phone);
@@ -60,7 +65,10 @@ class _LoginSheetState extends State<LoginSheet> {
         _code = '';
       });
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _errorDetails = e.diagnostics;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -70,13 +78,17 @@ class _LoginSheetState extends State<LoginSheet> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetails = null;
     });
     try {
       final session = await _auth.verifyOtp(phone: _phone, code: _code);
       _sessionState.setSession(session);
       setState(() => _step = _Step.qr);
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _errorDetails = e.diagnostics;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -149,10 +161,12 @@ class _LoginSheetState extends State<LoginSheet> {
           keyboardType: TextInputType.phone,
           autofocus: true,
           onChanged: (_) => setState(() {}),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(11),
-          ],
+          inputFormatters: const [TurkishPhoneInputFormatter()],
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
           decoration: const InputDecoration(
             labelText: 'Telefon Numarası',
             hintText: '5XX XXX XX XX',
@@ -163,13 +177,16 @@ class _LoginSheetState extends State<LoginSheet> {
             ),
           ),
         ),
-        if (_error != null) _ErrorBanner(_error!),
+        if (_error != null)
+          ErrorBanner(_error!, diagnostics: _errorDetails),
         AppSpacing.gapV16,
         AppButton(
           label: 'Kod Gönder',
           icon: Icons.sms_rounded,
           loading: _loading,
-          onPressed: _phone.length >= 10 ? _sendOtp : null,
+          onPressed: _phone.length == TurkishPhoneInputFormatter.maxDigits
+              ? _sendOtp
+              : null,
         ),
       ],
     );
@@ -192,13 +209,15 @@ class _LoginSheetState extends State<LoginSheet> {
           onChanged: (v) => setState(() {
             _code = v;
             _error = null;
+      _errorDetails = null;
           }),
           onCompleted: (v) {
             _code = v;
             _verify();
           },
         ),
-        if (_error != null) _ErrorBanner(_error!),
+        if (_error != null)
+          ErrorBanner(_error!, diagnostics: _errorDetails),
         AppSpacing.gapV16,
         AppButton(
           label: 'Doğrula',
@@ -212,6 +231,7 @@ class _LoginSheetState extends State<LoginSheet> {
               : () => setState(() {
                   _step = _Step.phone;
                   _error = null;
+      _errorDetails = null;
                 }),
           child: const Text('Numarayı değiştir'),
         ),
@@ -292,41 +312,3 @@ class _SheetHeader extends StatelessWidget {
   }
 }
 
-/// Hata mesajı bandı — yumuşak kırmızı zeminli.
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner(this.message);
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.md),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AppColors.errorLight,
-        borderRadius: AppSpacing.borderRadiusMd,
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 17,
-            color: AppColors.error,
-          ),
-          AppSpacing.gapH8,
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.error,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
