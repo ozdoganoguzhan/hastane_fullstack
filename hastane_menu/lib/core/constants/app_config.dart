@@ -52,18 +52,60 @@ sealed class AppConfig {
   static const String mockBaseUrl = 'http://10.0.2.2:5080';
 
   // Gerçek Turkcell HBYS host'ları (doküman v1.0 — CANLI).
-  static const String hbysAuthBaseUrl =
-      'https://api-legacy.app.external.eskisehir.yerel';
-  static const String hbysMenuBaseUrl =
-      'https://api-thirdparty.app.external.eskisehir.yerel';
-  static const String hbysPersonnelBaseUrl =
-      'https://api-quality.app.external.eskisehir.yerel';
+  //
+  // ⚠️ Üçü de derleme anında değiştirilebilir. Sebep: dokümanın v1.0'ında
+  //    personel ve menü servisleri için TEST ile CANLI satırları BİREBİR AYNI
+  //    yazılmış (kopyala-yapıştır); yalnızca entegre-login'de gerçek bir test
+  //    host'u var. 2026-09'da personel servisi bu host'ta `404 page not found`
+  //    döndü — üstelik HBYS'nin JSON hata zarfı değil, düz metin: istek
+  //    uygulamaya hiç ulaşmıyor, önündeki gateway reddediyor.
+  //    Doğru host bulununca burayı güncelleyin; aday denemek için:
+  //
+  //    flutter build apk --release \
+  //      --dart-define=HBYS_MENU_URL=https://<aday-host>
+  static const String hbysAuthBaseUrl = String.fromEnvironment(
+    'HBYS_AUTH_URL',
+    defaultValue: 'https://api-legacy.app.external.eskisehir.yerel',
+  );
+  /// ⚠️ 2026-09: Turkcell menü servisinin CANLI adresini de düzeltti —
+  ///    personelde olduğu gibi `app.external` DEĞİL, **`app.his`**.
+  ///    `api-thirdparty.app.external...` adresi `argument "content" is null`
+  ///    dönüyordu; o cevap yanlış host'taki bir backend'dendi.
+  static const String hbysMenuBaseUrl = String.fromEnvironment(
+    'HBYS_MENU_URL',
+    defaultValue: 'https://api-thirdparty.app.his.eskisehir.yerel',
+  );
+  /// ⚠️ 2026-09: Turkcell personel servisinin CANLI adresini düzeltti —
+  ///    `app.external` DEĞİL, **`app.his`**. Doküman v1.0'daki
+  ///    `api-quality.app.external...` adresi `404 page not found` dönüyordu.
+  ///    Yol, metot (POST) ve `cepTel` parametresi aynı kaldı.
+  static const String hbysPersonnelBaseUrl = String.fromEnvironment(
+    'HBYS_PERSONNEL_URL',
+    defaultValue: 'https://api-quality.app.his.eskisehir.yerel',
+  );
 
   /// Aktif host'lar — [useMockHbys] anahtarına göre otomatik seçilir.
   static String get authBaseUrl => useMockHbys ? mockBaseUrl : hbysAuthBaseUrl;
   static String get menuBaseUrl => useMockHbys ? mockBaseUrl : hbysMenuBaseUrl;
   static String get personnelBaseUrl =>
       useMockHbys ? mockBaseUrl : hbysPersonnelBaseUrl;
+
+  /// Aylık menü filtresinin (`{page, rows, first, sortField, sortOrder,
+  /// filters}` nesnesinin TAMAMI) URL-encode edilip gönderildiği QUERY
+  /// parametresinin adı.
+  ///
+  /// ⚠️ 2026-09 Turkcell teyidi — çalışan örnek istek:
+  ///    `GET .../aylik-yemek-listesi/get-kayit-list?filters=%7B%20%20%22page%22...`
+  ///    Ad **`filters`** (çoğul) ve gövde YOK. Doküman v1.0 filtreyi gövdede
+  ///    gösteriyordu; backend gövdeyi okumuyor, parametre gelmeyince
+  ///    `argument "content" is null` dönüyordu (`filter` tekili de okunmuyordu).
+  ///    Ad değişirse kod değiştirmeden:
+  ///
+  ///    flutter build apk --release --dart-define=HBYS_MENU_FILTER_PARAM=<ad>
+  static const String hbysMenuFilterParam = String.fromEnvironment(
+    'HBYS_MENU_FILTER_PARAM',
+    defaultValue: 'filters',
+  );
 
   /// HBYS kimlik bilgileri — Turkcell teknik personelinden alınır (doküman §1).
   static const String hbysUsername = 'KAPARI';

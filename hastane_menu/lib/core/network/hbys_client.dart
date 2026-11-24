@@ -2,22 +2,47 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'package:hastane_menu/core/constants/app_config.dart';
 import 'package:hastane_menu/core/network/hbys_trust.dart';
+
+/// Kullanıcıya gösterilen HBYS hata metinleri.
+///
+/// ⛔ Mağaza sürümünde kullanıcı YALNIZCA bunları görür. Sunucu/host adı,
+///    HTTP kodu, ham sunucu mesajı (ör. `argument "content" is null`) ya da
+///    istisna tipi bu metinlere GİRMEZ — hepsi [HbysException]'ın teşhis
+///    alanlarında kalır ve yalnızca `AppConfig.showErrorDiagnostics` açık
+///    derlemelerde görünür.
+sealed class HbysMessages {
+  static const String network =
+      'Sunucuya bağlanılamadı. Hastane Wi-Fi ağına bağlı olduğunuzdan emin '
+      'olup tekrar deneyin.';
+  static const String secureConnection =
+      'Sunucuyla güvenli bağlantı kurulamadı. Lütfen daha sonra tekrar deneyin.';
+  static const String timeout =
+      'Sunucu zamanında yanıt vermedi. Lütfen tekrar deneyin.';
+  static const String unavailable =
+      'İşlem şu anda gerçekleştirilemiyor. Lütfen daha sonra tekrar deneyin.';
+  static const String serviceLogin =
+      'Sisteme şu anda bağlanılamıyor. Sorun devam ederse yemekhane '
+      'yetkilisine bildirin.';
+}
 
 /// HBYS çağrısı başarısız olduğunda fırlatılır.
 ///
 /// Doküman hata zarfı: `{ httpStatus, exception: { errorCode, errorMessage } }`.
 ///
-/// Kullanıcıya gösterilen [message] dışında, sahada "ne nerede patladı"
-/// sorusunu cevaplayacak ham bilgiyi de taşır ([stage], [url], [statusCode],
-/// [responseBody], [exceptionType]). Bu alanlar yalnızca
-/// `AppConfig.showErrorDiagnostics` açıkken ekranda gösterilir.
+/// [message] her zaman [HbysMessages]'tan sade bir metindir. Sahada "ne nerede
+/// patladı" sorusunu cevaplayacak ham bilgi ayrı alanlarda taşınır ([stage],
+/// [url], [statusCode], [serverMessage], [responseBody], [exceptionType]) ve
+/// yalnızca `AppConfig.showErrorDiagnostics` açıkken ekranda gösterilir.
 class HbysException implements Exception {
   const HbysException(
     this.message, {
     this.statusCode,
     this.errorCode,
+    this.serverMessage,
     this.stage,
     this.method,
     this.url,
@@ -28,6 +53,9 @@ class HbysException implements Exception {
   final String message;
   final int? statusCode;
   final String? errorCode;
+
+  /// Sunucunun hata zarfındaki `errorMessage` — kullanıcıya GÖSTERİLMEZ.
+  final String? serverMessage;
 
   /// Hangi adım? ("entegre-login", "personel sorgusu", "aylık menü")
   final String? stage;
@@ -63,6 +91,7 @@ class HbysException implements Exception {
     line('İstisna', exceptionType);
     line('HTTP', statusCode);
     line('errorCode', errorCode);
+    line('Sunucu mesajı', serverMessage);
     line('Mesaj', message);
     line('Yanıt', responseBody);
     return b.toString().trimRight();
@@ -124,10 +153,12 @@ class HbysClient {
       );
     } on HbysException catch (e) {
       throw HbysException(
-        'Sunucu bağlantısı kurulamadı: yemekhane entegrasyon hesabı kabul '
-        'edilmedi. Lütfen yetkiliye bildirin. (HBYS: ${e.message})',
+        // Sunucu cevap verip REDDETTİYSE servis hesabı sorunudur; hiç
+        // ulaşılamadıysa ağ/zaman aşımı mesajı zaten doğrudur.
+        e.statusCode != null ? HbysMessages.serviceLogin : e.message,
         statusCode: e.statusCode,
         errorCode: e.errorCode,
+        serverMessage: e.serverMessage,
         stage: e.stage ?? '1) entegre-login (servis hesabı)',
         method: e.method,
         url: e.url,
@@ -137,7 +168,11 @@ class HbysClient {
     }
 
     if (json is! Map || json['access_token'] is! String) {
-      throw const HbysException('HBYS giriş yanıtında access_token bulunamadı.');
+      throw const HbysException(
+        HbysMessages.serviceLogin,
+        stage: '1) entegre-login (servis hesabı)',
+        serverMessage: 'Yanıtta access_token yok',
+      );
     }
 
     _token = json['access_token'] as String;
@@ -161,44 +196,124 @@ class HbysClient {
   }
 
   /// Doküman: AYLIK-YEMEK-LIST. Ham gövdeyi (`{ "data": [...] }`) döner.
+  ///
+  /// ⚠️ Turkcell teyidi (2026-09) — doküman v1.0'dan FARKLI:
+  ///  • Host `api-thirdparty.app.his...` (dokümandaki `app.external` yanlıştı).
+  ///  • Metot GET, ama filtre GÖVDEDE DEĞİL: filtre nesnesinin tamamı
+  ///    URL-encode edilip `?filters=` query parametresinde gider, gövde yok.
+  ///    Çalışan örnek: `get-kayit-list?filters=%7B%20%20%22page%22%3A%200...`
+  ///  • Gövdeyle ya da `?filter=` (tekil) ile çağrılınca backend
+  ///    `argument "content" is null` dönüyordu: `filters` parametresi
+  ///    gelmeyince Jackson'a `null` veriyor.
   Future<Map<String, dynamic>> monthlyMenu(int yil, int ay) async {
-    final json = await _authorized(
-      (token) => _send(
-        method: 'GET',
-        url:
-            '${_trim(AppConfig.menuBaseUrl)}/aylik-yemek-listesi/get-kayit-list',
-        stage: '3) aylık menü listesi ($yil/$ay)',
-        token: token,
-        body: {
-          'page': 0,
-          'rows': 100,
-          'first': 0,
-          'sortField': 'id',
-          'sortOrder': 0,
-          'filters': {
-            'yil': {'value': yil, 'type': 'int', 'matchMode': 'equals'},
-            'ay': {'value': ay, 'type': 'int', 'matchMode': 'equals'},
-          },
-        },
-      ),
-    );
-    return json is Map<String, dynamic> ? json : const {};
+    final param = AppConfig.hbysMenuFilterParam;
+    try {
+      final json = await _authorized(
+        (token) => _send(
+          method: 'GET',
+          url:
+              '${_trim(AppConfig.menuBaseUrl)}/aylik-yemek-listesi/get-kayit-list',
+          stage: '3) aylık menü listesi ($yil/$ay) [GET ?$param=]',
+          token: token,
+          // Turkcell örneğiyle birebir: yalnızca query parametresi, gövde YOK.
+          query: menuQuery(yil, ay),
+        ),
+      );
+      return json is Map<String, dynamic> ? json : const {};
+    } on HbysException catch (e) {
+      // O ay için menü girilmemişse HBYS hata zarfı döner; kullanıcıya hata
+      // değil boş menü gösterilir.
+      if (isNotFoundError(e)) return const {'data': <dynamic>[]};
+      if (!isBodyMissingError(e)) rethrow;
+      // `?filters=` ile de "content is null" geliyorsa parametre yine
+      // okunmuyor demektir — dökümde bunu açıkça söyle.
+      throw HbysException(
+        e.message,
+        statusCode: e.statusCode,
+        errorCode: e.errorCode,
+        serverMessage: e.serverMessage,
+        stage:
+            '3) aylık menü — sunucu `?$param=` parametresini okuyamadı. '
+            'Turkcell örneğiyle karşılaştırın: parametre adı, host (http/https) '
+            've filtre biçimi.',
+        method: e.method,
+        url: e.url,
+        responseBody: e.responseBody,
+        exceptionType: e.exceptionType,
+      );
+    }
+  }
+
+  /// Dokümandaki PrimeNG filtre gövdesi (`{page, rows, ..., filters}`).
+  @visibleForTesting
+  static Map<String, dynamic> menuFilter(int yil, int ay) => {
+    'page': 0,
+    'rows': 100,
+    'first': 0,
+    'sortField': 'id',
+    'sortOrder': 0,
+    'filters': {
+      'yil': {'value': yil, 'type': 'int', 'matchMode': 'equals'},
+      'ay': {'value': ay, 'type': 'int', 'matchMode': 'equals'},
+    },
+  };
+
+  /// Filtrenin URL'ye girecek hâli: `{filter: '<json>'}`. [buildUri] bunu
+  /// URL-encode eder.
+  @visibleForTesting
+  static Map<String, String> menuQuery(int yil, int ay) => {
+    AppConfig.hbysMenuFilterParam: jsonEncode(menuFilter(yil, ay)),
+  };
+
+  /// Sunucu filtre/gövde verisini ALMADIĞINI mı söylüyor?
+  ///
+  /// • `argument "content" is null` → Jackson `readValue(null)` (sahada görüldü)
+  /// • `Required request body is missing` → Spring'in eksik gövde mesajı
+  @visibleForTesting
+  static bool isBodyMissingError(HbysException e) {
+    // Ham JSON gövdede tırnaklar kaçışlı gelir (`\"content\"`); ters bölüleri
+    // atmazsak aynı mesaj eşleşmez (testte yakalandı).
+    final text = '${e.message} ${e.serverMessage ?? ''} ${e.responseBody ?? ''}'
+        .replaceAll(r'\', '')
+        .toLowerCase();
+    return text.contains('"content" is null') ||
+        text.contains('required request body is missing');
+  }
+
+  /// Sunucu cevap verdi ama "Kayıt bulunamadı" dedi mi?
+  ///
+  /// Doküman bu hata zarfını tanımlıyor. Kullanıcı mesajları sadeleştirildiği
+  /// için ayrıca tanınır: personelde "numara kayıtlı değil", menüde "boş ay"
+  /// anlamına gelir — genel "işlem gerçekleştirilemiyor" hatası değil.
+  @visibleForTesting
+  static bool isNotFoundError(HbysException e) {
+    if (e.statusCode == null) return false;
+    final text = (e.serverMessage ?? '').toLowerCase();
+    return text.contains('kayıt bulunamadı') ||
+        text.contains('kayit bulunamadi');
   }
 
   /// Doküman: GET-PERSONEL-KARTI-BY-CEP-TEL.
   /// Yanıt: `{ data: { adiSoyadi, personelKartNo }, present }`.
   Future<Map<String, dynamic>> personnelByPhone(String cepTel) async {
-    final json = await _authorized(
-      (token) => _send(
-        method: 'POST',
-        url:
-            '${_trim(AppConfig.personnelBaseUrl)}/personel/get-personel-karti-by-cep-tel',
-        stage: '2) personel kartı sorgusu (cepTel=$cepTel)',
-        token: token,
-        query: {'cepTel': cepTel},
-      ),
-    );
-    return json is Map<String, dynamic> ? json : const {};
+    try {
+      final json = await _authorized(
+        (token) => _send(
+          method: 'POST',
+          url:
+              '${_trim(AppConfig.personnelBaseUrl)}/personel/get-personel-karti-by-cep-tel',
+          stage: '2) personel kartı sorgusu (cepTel=$cepTel)',
+          token: token,
+          query: {'cepTel': cepTel},
+        ),
+      );
+      return json is Map<String, dynamic> ? json : const {};
+    } on HbysException catch (e) {
+      // Kayıt yoksa `present:false` yerine hata zarfı dönebilir; ikisi de
+      // AuthService'te "numara kayıtlı değil" olarak gösterilir.
+      if (isNotFoundError(e)) return const {'present': false};
+      rethrow;
+    }
   }
 
   /// Token ile dener; AUTH hatası gelirse bir kez yenileyip tekrar dener
@@ -235,13 +350,28 @@ class HbysClient {
     ).timeout(
       AppConfig.apiTimeout,
       onTimeout: () => throw HbysException(
-        'HBYS isteği zaman aşımına uğradı. Sunucuya ulaşılamıyor olabilir.',
+        HbysMessages.timeout,
         stage: stage,
         method: method,
         url: url,
         exceptionType:
             'TimeoutException (toplam ${AppConfig.apiTimeout.inSeconds} sn)',
       ),
+    );
+  }
+
+  /// Gönderilecek tam adresi kurar.
+  ///
+  /// Ayrı bir metot olmasının sebebi: 2026-09'da personel servisinden
+  /// `404 page not found` geldi ve "hatayı biz mi yapıyoruz" sorusunu
+  /// tahminle değil TESTLE cevaplamak gerekti. Buradaki çıktı dokümandaki
+  /// adresle birebir eşleşmeli (bkz. `hbys_client_url_test.dart`).
+  @visibleForTesting
+  static Uri buildUri(String url, [Map<String, dynamic>? query]) {
+    final base = Uri.parse(url);
+    if (query == null || query.isEmpty) return base;
+    return base.replace(
+      queryParameters: query.map((k, v) => MapEntry(k, '$v')),
     );
   }
 
@@ -253,12 +383,7 @@ class HbysClient {
     String? token,
     String? stage,
   }) async {
-    var uri = Uri.parse(url);
-    if (query != null) {
-      uri = uri.replace(
-        queryParameters: query.map((k, v) => MapEntry(k, '$v')),
-      );
-    }
+    final uri = buildUri(url, query);
 
     // Yanıt gövdesi okunabildiyse hata yollarında da elimizde olsun.
     String? rawBody;
@@ -300,7 +425,7 @@ class HbysClient {
         } catch (_) {
           decodedError = null; // JSON değilse ham metinle devam.
         }
-        throw _errorFrom(
+        throw errorFrom(
           response.statusCode,
           decodedError,
           stage: stage,
@@ -316,30 +441,28 @@ class HbysClient {
       // /güvenlik duvarı) ama ikisi de aynı istisnadan gelir.
       final dnsFailure = e.osError == null || e.message.contains('host lookup');
       throw HbysException(
-        dnsFailure
-            ? 'Sunucu adı çözümlenemedi (${uri.host}). Hastane ağında '
-                  'olduğunuzdan emin olun.'
-            : 'HBYS sunucusuna ulaşılamadı (${uri.host}): ${e.message}',
+        HbysMessages.network,
         stage: stage,
         method: method,
         url: '$uri',
         exceptionType: 'SocketException'
-            '${e.osError != null ? ' (errno ${e.osError!.errorCode})' : ''}',
+            '${dnsFailure ? ' (DNS çözümlenemedi)' : ''}'
+            '${e.osError != null ? ' (errno ${e.osError!.errorCode})' : ''}'
+            ': ${e.message}',
       );
     } on HandshakeException catch (e) {
       // Kurum içi sertifika zinciri cihaz tarafından tanınmıyorsa buraya düşer;
       // aksi hâlde bu istisna yakalanmadan yukarı kaçardı.
       throw HbysException(
-        'HBYS sunucusunun güvenlik sertifikası doğrulanamadı (${uri.host}): '
-        '${e.message}',
+        HbysMessages.secureConnection,
         stage: stage,
         method: method,
         url: '$uri',
-        exceptionType: 'HandshakeException',
+        exceptionType: 'HandshakeException: ${e.message}',
       );
     } on TimeoutException {
       throw HbysException(
-        'HBYS isteği zaman aşımına uğradı (${uri.host}).',
+        HbysMessages.timeout,
         stage: stage,
         method: method,
         url: '$uri',
@@ -349,11 +472,11 @@ class HbysClient {
       // 2xx geldi ama gövde JSON değil → ham metni MUTLAKA taşı; genelde
       // araya giren bir proxy/portal HTML'i olur.
       throw HbysException(
-        'HBYS sunucusundan geçersiz yanıt alındı (JSON değil).',
+        HbysMessages.unavailable,
         stage: stage,
         method: method,
         url: '$uri',
-        exceptionType: 'FormatException: ${e.message}',
+        exceptionType: 'FormatException (yanıt JSON değil): ${e.message}',
         responseBody: _clip(rawBody),
       );
     } on HbysException {
@@ -361,7 +484,8 @@ class HbysClient {
     } catch (e) {
       // Beklenmeyen her şey de teşhise dahil olsun; sessizce kaybolmasın.
       throw HbysException(
-        'Beklenmeyen hata: $e',
+        HbysMessages.unavailable,
+        serverMessage: '$e',
         stage: stage,
         method: method,
         url: '$uri',
@@ -373,8 +497,15 @@ class HbysClient {
     }
   }
 
-  /// Doküman hata zarfı → [HbysException].
-  HbysException _errorFrom(
+  /// Başarısız HTTP yanıtı (doküman hata zarfı ya da düz metin) →
+  /// [HbysException].
+  ///
+  /// Sunucunun `errorMessage`'ı KULLANICIYA GİTMEZ: sahada bu alandan
+  /// `argument "content" is null` gibi metinler geldi. Kullanıcı sade
+  /// [HbysMessages.unavailable] görür; ham metin [HbysException.serverMessage]
+  /// ve [HbysException.responseBody]'de kalır.
+  @visibleForTesting
+  static HbysException errorFrom(
     int status,
     dynamic body, {
     String? stage,
@@ -382,21 +513,18 @@ class HbysClient {
     String? url,
     String? rawBody,
   }) {
+    String? serverMessage;
+    String? errorCode;
     if (body is Map && body['exception'] is Map) {
       final exception = body['exception'] as Map;
-      return HbysException(
-        (exception['errorMessage'] as String?) ?? 'HBYS sunucu hatası',
-        statusCode: status,
-        errorCode: exception['errorCode'] as String?,
-        stage: stage,
-        method: method,
-        url: url,
-        responseBody: _clip(rawBody),
-      );
+      serverMessage = exception['errorMessage'] as String?;
+      errorCode = exception['errorCode'] as String?;
     }
     return HbysException(
-      'HBYS sunucu hatası ($status)',
+      HbysMessages.unavailable,
       statusCode: status,
+      errorCode: errorCode,
+      serverMessage: serverMessage,
       stage: stage,
       method: method,
       url: url,

@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Codemagic — iOS derleme + App Store Connect (TestFlight) yükleme
+# Mac gerekmez: build Codemagic'in bulut Mac'inde (M2) koşar.
+# Ücretsiz plan: kişisel hesapta ayda 500 dk macOS M2. Bir build ~10-20 dk.
+#
+# Bu dosya repo KÖKÜNDE olmalı (Codemagic burada arar); Flutter projesi
+# `hastane_menu/` alt klasöründe olduğu için working_directory ayarlı.
+#
+# Tetikleme YOK → yalnızca Codemagic arayüzünden "Start new build" ile
+# elle başlar (her push'ta dakika yakmasın diye).
+# ─────────────────────────────────────────────────────────────────────────
+workflows:
+  ios-appstore:
+    name: iOS — App Store Connect
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: hastane_menu
+
+    integrations:
+      # Codemagic → Settings → Integrations → Developer Portal'a eklediğin
+      # App Store Connect API anahtarının ADI. Birebir aynı olmalı.
+      app_store_connect: Kapari ASC
+
+    environment:
+      flutter: 3.41.6          # yereldeki sürümle aynı
+      xcode: latest            # App Store güncel iOS SDK ile derlenmiş build ister
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kapari.eskhMenu
+      vars:
+        # App Store Connect → Uygulama → App Information → "Apple ID"
+        # (10 haneli sayı). Build numarasını otomatik artırmak için.
+        APP_STORE_APPLE_ID: "6838706954"
+
+    scripts:
+      - name: Bağımlılıklar
+        script: flutter pub get
+
+      - name: Statik analiz + testler
+        script: |
+          flutter analyze
+          flutter test
+
+      - name: CocoaPods
+        script: cd ios && pod install
+
+      - name: İmza profillerini Xcode projesine uygula
+        script: xcode-project use-profiles
+
+      - name: IPA derle
+        script: |
+          # iOS build numarası her yüklemede artmalı. TestFlight'taki son
+          # numara ile pubspec'teki (+N) numaradan büyük olanı kullanılır.
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          [[ "$LATEST" =~ ^[0-9]+$ ]] || LATEST=0
+          PUBSPEC=$(grep '^version:' pubspec.yaml | sed 's/.*+//' | tr -d '[:space:]')
+          [[ "$PUBSPEC" =~ ^[0-9]+$ ]] || PUBSPEC=1
+          NEXT=$(( LATEST >= PUBSPEC ? LATEST + 1 : PUBSPEC ))
+          echo "iOS build numarası: $NEXT"
+
+          flutter build ipa --release \
+            --build-number=$NEXT \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Yükler; TestFlight'ta "dahili test" için hazır olur. İncelemeye
+        # gönderme kararı App Store Connect'ten ELLE verilir.
+        submit_to_testflight: false
+        submit_to_app_store: false

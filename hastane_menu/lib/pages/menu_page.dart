@@ -247,8 +247,8 @@ class _MenuPageState extends State<MenuPage> {
                           ? ListView(
                               padding: AppSpacing.paddingAllBase,
                               children: [
-                                MenuErrorCard(
-                                  message: '${snapshot.error}',
+                                MenuErrorCard.fromError(
+                                  snapshot.error,
                                   onRetry: () => setState(
                                     () => _monthFuture = _loadMonth(),
                                   ),

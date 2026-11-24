@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hastane_menu/components/app_button.dart';
+import 'package:hastane_menu/components/error_banner.dart';
 import 'package:hastane_menu/components/skeleton.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
+import 'package:hastane_menu/core/constants/app_config.dart';
 import 'package:hastane_menu/core/constants/app_spacing.dart';
+import 'package:hastane_menu/core/network/hbys_client.dart';
 
 /// Menü yüklenirken gösterilen iskelet kart — spinner yerine, gelecek içeriğin
 /// biçiminde parlayan (shimmer) placeholder.
@@ -82,17 +85,53 @@ class MenuLoadingCard extends StatelessWidget {
 }
 
 /// İçerik yüklenemediğinde gösterilen hata kartı + "Tekrar dene".
+///
+/// [diagnostics] verilmiş ve `AppConfig.showErrorDiagnostics` açıksa mesaj,
+/// giriş ekranlarındaki gibi açılır "Teknik detay" + Kopyala ile gösterilir.
+/// Sahada menü hatası ilk kez burada çıktı ve yalnızca düz mesaj vardı;
+/// hangi istek, hangi HTTP kodu, sunucu ne döndü görünmüyordu.
 class MenuErrorCard extends StatelessWidget {
   const MenuErrorCard({
     super.key,
     required this.message,
+    this.diagnostics,
     this.onRetry,
     this.title = 'Menü yüklenemedi',
   });
 
+  /// `FutureBuilder`'dan gelen hatayı karta çevirir.
+  ///
+  /// ⛔ HBYS dışı hatalar (ör. yanıt ayrıştırmada Dart tip hatası) `'$error'`
+  ///    olarak BASILMAZ — kullanıcı sade metin görür, ayrıntı teşhise gider.
+  factory MenuErrorCard.fromError(
+    Object? error, {
+    Key? key,
+    VoidCallback? onRetry,
+  }) {
+    if (error is HbysException) {
+      return MenuErrorCard(
+        key: key,
+        message: error.message,
+        diagnostics: error.diagnostics,
+        onRetry: onRetry,
+      );
+    }
+    return MenuErrorCard(
+      key: key,
+      message: 'Menü şu anda yüklenemiyor. Lütfen tekrar deneyin.',
+      diagnostics: 'İstisna: ${error.runtimeType}\n$error',
+      onRetry: onRetry,
+    );
+  }
+
   final String message;
+  final String? diagnostics;
   final String title;
   final VoidCallback? onRetry;
+
+  bool get _hasDiagnostics =>
+      AppConfig.showErrorDiagnostics &&
+      (diagnostics?.trim().isNotEmpty ?? false);
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +151,7 @@ class MenuErrorCard extends StatelessWidget {
             height: 60,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
-              color: AppColors.errorLight,
+              color: AppColors.primarySoft,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -132,15 +171,18 @@ class MenuErrorCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: AppColors.textLight,
-              height: 1.5,
+          if (_hasDiagnostics)
+            ErrorBanner(message, diagnostics: diagnostics)
+          else
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textLight,
+                height: 1.5,
+              ),
             ),
-          ),
           if (onRetry != null) ...[
             AppSpacing.gapV20,
             AppButton(

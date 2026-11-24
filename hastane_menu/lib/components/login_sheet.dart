@@ -52,6 +52,10 @@ class _LoginSheetState extends State<LoginSheet> {
   String get _phone =>
       TurkishPhoneInputFormatter.digitsOf(_phoneController.text);
 
+  /// Beklenmeyen (AuthException dışı) hatalarda kullanıcıya giden metin.
+  static const String _unexpectedError =
+      'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
+
   Future<void> _sendOtp() async {
     setState(() {
       _loading = true;
@@ -68,6 +72,12 @@ class _LoginSheetState extends State<LoginSheet> {
       setState(() {
         _error = e.message;
         _errorDetails = e.diagnostics;
+      });
+    } catch (e) {
+      // Beklenmeyen hata: kullanıcıya sade mesaj, ayrıntı yalnızca teşhise.
+      setState(() {
+        _error = _unexpectedError;
+        _errorDetails = 'İstisna: ${e.runtimeType}\n$e';
       });
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -88,6 +98,12 @@ class _LoginSheetState extends State<LoginSheet> {
       setState(() {
         _error = e.message;
         _errorDetails = e.diagnostics;
+      });
+    } catch (e) {
+      // Beklenmeyen hata: kullanıcıya sade mesaj, ayrıntı yalnızca teşhise.
+      setState(() {
+        _error = _unexpectedError;
+        _errorDetails = 'İstisna: ${e.runtimeType}\n$e';
       });
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -16,6 +16,10 @@
 	<string>Hastane ağında olduğunuzu doğrulamak için yerel ağ erişimi gerekiyor.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Kapari Hazır Yemek</string>
+	<!-- Yalnızca standart HTTPS/TLS kullanılıyor (muaf şifreleme) → App Store
+	     Connect her build'de "Export Compliance" sormasın. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

@@ -30,8 +30,8 @@
 param(
     [string[]]$Hosts = @(
         "api-legacy.app.external.eskisehir.yerel",
-        "api-thirdparty.app.external.eskisehir.yerel",
-        "api-quality.app.external.eskisehir.yerel"
+        "api-thirdparty.app.his.eskisehir.yerel",
+        "api-quality.app.his.eskisehir.yerel"
     ),
     [int]$Port = 443
 )

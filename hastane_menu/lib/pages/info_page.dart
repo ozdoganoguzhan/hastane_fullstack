@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 
 import 'package:hastane_menu/components/app_button.dart';
-import 'package:hastane_menu/components/async_status.dart';
 import 'package:hastane_menu/components/brand_logo.dart';
 import 'package:hastane_menu/components/page_header.dart';
 import 'package:hastane_menu/core/constants/app_colors.dart';
@@ -36,8 +33,6 @@ class InfoPage extends StatelessWidget {
           _InfoCard(info: BrandInfo.fromConfig()),
           AppSpacing.gapV16,
           const _SessionCard(),
-          // AppSpacing.gapV16,
-          // const _NetworkDebugCard(),
           AppSpacing.gapV24,
           const _BrandFooter(),
         ],
@@ -181,150 +176,6 @@ class _BrandFooter extends StatelessWidget {
       children: [
         const BrandLogo(height: 16),
       ],
-    );
-  }
-}
-
-/// TEST/DEBUG: `network_info_plus`'ın okuyabildiği tüm ağ bilgilerini gösterir
-/// (WiFi adı, BSSID, IP, gateway, subnet vb.). Yalnızca tanılama amaçlıdır;
-/// canlıya çıkmadan kaldırılabilir.
-class _NetworkDebugCard extends StatefulWidget {
-  const _NetworkDebugCard();
-
-  @override
-  State<_NetworkDebugCard> createState() => _NetworkDebugCardState();
-}
-
-class _NetworkDebugCardState extends State<_NetworkDebugCard> {
-  final NetworkInfo _netInfo = NetworkInfo();
-  late Future<Map<String, String?>> _future = _load();
-
-  Future<Map<String, String?>> _load() async {
-    // Her bir okuma birbirinden bağımsız; biri patlasa diğerleri görünsün diye
-    // hepsini tek tek best-effort topluyoruz.
-    Future<String?> safe(Future<String?> Function() fn) async {
-      try {
-        return await fn();
-      } catch (e) {
-        return 'HATA: $e';
-      }
-    }
-
-    return {
-      'WiFi Adı (SSID)': await safe(_netInfo.getWifiName),
-      'BSSID': await safe(_netInfo.getWifiBSSID),
-      'IP Adresi (IPv4)': await safe(_netInfo.getWifiIP),
-      'IP Adresi (IPv6)': await safe(_netInfo.getWifiIPv6),
-      'Subnet Mask': await safe(_netInfo.getWifiSubmask),
-      'Broadcast': await safe(_netInfo.getWifiBroadcast),
-      'Gateway IP': await safe(_netInfo.getWifiGatewayIP),
-    };
-  }
-
-  void _reload() => setState(() => _future = _load());
-
-  void _copy(Map<String, String?> data) {
-    final text = data.entries
-        .map((e) => '${e.key}: ${e.value ?? "—"}')
-        .join('\n');
-    Clipboard.setData(ClipboardData(text: text));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ağ bilgileri panoya kopyalandı')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        borderRadius: AppSpacing.borderRadiusXl,
-        boxShadow: AppSpacing.shadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: AppSpacing.borderRadiusSm,
-                ),
-                child: const Icon(
-                  Icons.wifi_rounded,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              AppSpacing.gapH12,
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Ağ Bilgileri', style: AppTypography.headingMedium),
-                    SizedBox(height: 1),
-                    Text('Tanılama (test)', style: AppTypography.bodySmall),
-                  ],
-                ),
-              ),
-              FutureBuilder<Map<String, String?>>(
-                future: _future,
-                builder: (context, snapshot) => IconButton(
-                  tooltip: 'Kopyala',
-                  icon: const Icon(
-                    Icons.copy_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  onPressed: snapshot.hasData
-                      ? () => _copy(snapshot.data!)
-                      : null,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Yenile',
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-                onPressed: _reload,
-              ),
-            ],
-          ),
-          AppSpacing.gapV12,
-          FutureBuilder<Map<String, String?>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const MenuLoadingCard(height: 160);
-              }
-              final data = snapshot.data ?? const {};
-              return Column(
-                children: [
-                  for (final entry in data.entries) ...[
-                    _InfoRow(
-                      icon: Icons.lan_rounded,
-                      title: entry.key,
-                      value: (entry.value == null || entry.value!.isEmpty)
-                          ? '—'
-                          : entry.value!,
-                    ),
-                    AppSpacing.gapV8,
-                  ],
-                ],
-              );
-            },
-          ),
-        ],
-      ),
     );
   }
 }

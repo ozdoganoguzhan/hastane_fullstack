@@ -38,6 +38,14 @@ sealed class HbysTrust {
     Uri.parse(AppConfig.hbysPersonnelBaseUrl).host,
   };
 
+  /// Bu host'un kurum içi sertifikası kabul ediliyor mu?
+  ///
+  /// Test için açık: bir HBYS adresi değiştiğinde (2026-09'da personel
+  /// `app.external` → `app.his` oldu) yeni host'un bu listeye GİRDİĞİ
+  /// doğrulanmalı; girmezse telefonda yine `HandshakeException` alınır.
+  @visibleForTesting
+  static bool isTrustedHost(String host) => _internalHosts.contains(host);
+
   /// İstemcinin kullanacağı güven bağlamı. CA gömülü değilse `null` döner
   /// (sistem kökleri kullanılır). Bir kez kurulur, sonra önbellekten döner.
   ///
@@ -62,10 +70,14 @@ sealed class HbysTrust {
       // withTrustedRoots: sistem kökleri KORUNUR, üzerine kurum CA'sı eklenir.
       _context = SecurityContext(withTrustedRoots: true)
         ..setTrustedCertificatesBytes(bytes);
-      debugPrint('[TLS] Kurum CA paketi yuklendi (${bytes.length} bayt).');
+      if (kDebugMode) {
+        debugPrint('[TLS] Kurum CA paketi yuklendi (${bytes.length} bayt).');
+      }
     } on TlsException catch (e) {
       // Bozuk PEM'i sessizce yutma; aksi hâlde neden çalışmadığı anlaşılmaz.
-      debugPrint('[TLS] CA paketi OKUNAMADI (gecersiz PEM): ${e.message}');
+      if (kDebugMode) {
+        debugPrint('[TLS] CA paketi OKUNAMADI (gecersiz PEM): ${e.message}');
+      }
     } catch (_) {
       // Asset yok → normal durum, CA gömülmemiş demektir.
     }
@@ -80,12 +92,15 @@ sealed class HbysTrust {
     if (!AppConfig.trustInternalHbysCertificate) return null;
     return (cert, host, port) {
       final internal = _internalHosts.contains(host);
-      debugPrint(
-        internal
-            ? '[TLS] Kurum ici sertifika kabul edildi: $host:$port '
-                  '(${cert.subject})'
-            : '[TLS] REDDEDILDI (HBYS host listesinde degil): $host:$port',
-      );
+      // Host/sertifika bilgisi yalnızca debug derlemede loglanır.
+      if (kDebugMode) {
+        debugPrint(
+          internal
+              ? '[TLS] Kurum ici sertifika kabul edildi: $host:$port '
+                    '(${cert.subject})'
+              : '[TLS] REDDEDILDI (HBYS host listesinde degil): $host:$port',
+        );
+      }
       return internal;
     };
   }

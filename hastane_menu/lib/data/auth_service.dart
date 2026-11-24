@@ -61,7 +61,7 @@ class AuthService {
   }
 
   Future<void> _performRequest(String cepTel) async {
-    debugPrint('[OTP] 1/4 baslatildi → $cepTel');
+    _log('[OTP] 1/4 baslatildi → $cepTel');
 
     // Tekrar gönderim bekleme süresi.
     final existing = _pending[cepTel];
@@ -69,7 +69,7 @@ class AuthService {
       final elapsed = DateTime.now().difference(existing.issuedAt);
       if (elapsed < AppConfig.otpResendCooldown) {
         final remaining = AppConfig.otpResendCooldown - elapsed;
-        debugPrint('[OTP] ✗ cooldown: ${remaining.inSeconds + 1} sn');
+        _log('[OTP] ✗ cooldown: ${remaining.inSeconds + 1} sn');
         throw AuthException(
           'Yeni kod için ${remaining.inSeconds + 1} saniye bekleyin.',
         );
@@ -77,13 +77,13 @@ class AuthService {
     }
 
     // 1) HBYS: login + telefon doğrulama (personel kartı).
-    debugPrint('[OTP] 2/4 HBYS personel sorgusu → ${AppConfig.personnelBaseUrl}');
+    _log('[OTP] 2/4 HBYS personel sorgusu → ${AppConfig.personnelBaseUrl}');
     final Map<String, dynamic> response;
     try {
       response = await _client.personnelByPhone(cepTel);
-      debugPrint('[OTP] 2/4 HBYS yanit: present=${response['present']}');
+      _log('[OTP] 2/4 HBYS yanit: present=${response['present']}');
     } on HbysException catch (e) {
-      debugPrint('[OTP] ✗ HBYS hatasi: ${e.message}\n${e.diagnostics}');
+      _log('[OTP] ✗ HBYS hatasi: ${e.message}\n${e.diagnostics}');
       throw AuthException(e.message, diagnostics: e.diagnostics);
     }
 
@@ -126,12 +126,15 @@ class AuthService {
 
     // 3) SMS gönder. Başarısızsa kaydı geri al ki kullanıcı hemen tekrar
     //    deneyebilsin (boşuna 60 sn beklemesin).
-    debugPrint('[OTP] 3/4 SMS gonderiliyor → ${AppConfig.smsBaseUrl} (kod: $code)');
+    _log('[OTP] 3/4 SMS gonderiliyor → ${AppConfig.smsBaseUrl} (kod: $code)');
     final result = await _sms.send(
       cepTel,
       'Kapari Hazir Yemek dogrulama kodunuz: $code',
     );
-    debugPrint('[OTP] 4/4 SMS sonuc: success=${result.success} → ${result.message}');
+    _log(
+      '[OTP] 4/4 SMS sonuc: success=${result.success} → '
+      '${result.detail ?? result.message}',
+    );
 
     if (!result.success) {
       _pending.remove(cepTel);
@@ -141,9 +144,18 @@ class AuthService {
             'Aşama: 4) SMS gönderimi (3G Bilişim)\n'
             'İstek: GET ${AppConfig.smsBaseUrl}/SendSmsGet.aspx\n'
             'origin=${AppConfig.smsOriginator}, to=$cepTel\n'
-            'Yanıt: ${result.message}',
+            'Yanıt: ${result.detail ?? result.message}',
       );
     }
+  }
+
+  /// Akış logu — YALNIZCA debug derlemede yazılır.
+  ///
+  /// ⛔ Bu loglar telefon numarasını ve OTP KODUNU içerir. `debugPrint`
+  ///    release'de de logcat'e yazar; mağaza sürümünde kodun log'a düşmemesi
+  ///    için `kDebugMode` şartı zorunludur.
+  static void _log(String message) {
+    if (kDebugMode) debugPrint(message);
   }
 
   /// Teşhis kutusuna sığacak şekilde kısaltılmış gösterim.

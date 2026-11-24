@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -100,14 +101,14 @@ class WifiGuard implements IDisposable {
     // 3) Bağlı AP'nin MAC (BSSID) öneki hastaneye ait mi?
     //    Okunamıyor/maskeli ise (izin veya konum servisi eksik) → ENGELLE.
     if (AppConfig.enforceBssid && AppConfig.allowedBssidPrefixes.isNotEmpty) {
-      final bssid = _normalizeMac(await _safe(() => _netInfo.getWifiBSSID()));
+      final bssid = normalizeMac(await _safe(() => _netInfo.getWifiBSSID()));
 
       if (bssid == null || bssid.length < 12 || _isMaskedMac(bssid)) {
         return _diagnoseUnreadable();
       }
 
       final allowed = AppConfig.allowedBssidPrefixes
-          .map(_normalizeMac)
+          .map(normalizeMac)
           .whereType<String>()
           .any(bssid.startsWith);
 
@@ -132,9 +133,24 @@ class WifiGuard implements IDisposable {
   }
 
   /// "04:ca:ed:11:22:33" · "04-CA-ED-11-22-33" · "04caed" → "04caed112233"
-  String? _normalizeMac(String? raw) {
+  ///
+  /// ⚠️ iOS (NEHotspotNetwork / CNCopyCurrentNetworkInfo) BSSID'nin her
+  /// oktetindeki baştaki sıfırı YUTAR: `04:0a:ed:…` → `4:a:ed:…`. Ayırıcıları
+  /// silip birleştirmek `4aed…` üretir; önek eşleşmez, uzunluk 12'nin altına
+  /// düşer ve kapı hastane ağında bile kapanır. Bu yüzden ayırıcılı biçimde
+  /// her oktet 2 haneye tamamlanır.
+  @visibleForTesting
+  static String? normalizeMac(String? raw) {
     if (raw == null) return null;
-    final cleaned = raw.toLowerCase().replaceAll(RegExp('[^0-9a-f]'), '');
+    final lower = raw.toLowerCase().trim();
+    final octets = lower.split(RegExp('[:-]'));
+    final cleaned = octets.length > 1
+        ? octets
+              .map((o) => o.replaceAll(RegExp('[^0-9a-f]'), ''))
+              .where((o) => o.isNotEmpty)
+              .map((o) => o.padLeft(2, '0'))
+              .join()
+        : lower.replaceAll(RegExp('[^0-9a-f]'), '');
     return cleaned.isEmpty ? null : cleaned;
   }
 

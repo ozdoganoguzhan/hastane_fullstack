@@ -61,8 +61,8 @@ class _HomePageState extends State<HomePage> {
                         return const MenuLoadingCard();
                       }
                       if (snapshot.hasError) {
-                        return MenuErrorCard(
-                          message: '${snapshot.error}',
+                        return MenuErrorCard.fromError(
+                          snapshot.error,
                           onRetry: _reloadMenu,
                         );
                       }

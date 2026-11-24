@@ -30,8 +30,8 @@ param(
     [int]   $OrganizationId = 106,
 
     [string]$AuthHost      = "api-legacy.app.external.eskisehir.yerel",
-    [string]$MenuHost      = "api-thirdparty.app.external.eskisehir.yerel",
-    [string]$PersonnelHost = "api-quality.app.external.eskisehir.yerel"
+    [string]$MenuHost      = "api-thirdparty.app.his.eskisehir.yerel",
+    [string]$PersonnelHost = "api-quality.app.his.eskisehir.yerel"
 )
 
 $ErrorActionPreference = "Continue"

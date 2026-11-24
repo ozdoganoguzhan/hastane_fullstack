@@ -15,7 +15,8 @@ namespace Ozi.Features.HbysMock;
 ///
 /// Uçlar (doküman ile aynı yol/gövde/başlık):
 ///  • POST /auth/entegre-login
-///  • GET  /aylik-yemek-listesi/get-kayit-list      (PrimeNG filter gövdesi + Bearer)
+///  • GET  /aylik-yemek-listesi/get-kayit-list      (?filters=&lt;URL-encode JSON&gt; + Bearer;
+///                                                  eski doküman biçimi gövde de kabul edilir)
 ///  • POST /personel/get-personel-karti-by-cep-tel  (?cepTel= + Bearer)
 /// </summary>
 public static class HbysMockEndpoints
@@ -49,7 +50,11 @@ public static class HbysMockEndpoints
         .WithTags("HBYS Mock");
 
         // ── 2) AYLIK-YEMEK-LIST ─────────────────────────────────────────────
-        // Doküman GET + filter gövdesi kullanıyor; gövdeyi elle okuyoruz.
+        // Turkcell teyidi (2026-09): gerçek HBYS filtre nesnesinin TAMAMINI
+        // URL-encode edilmiş `?filters=` query parametresinde bekliyor, gövde
+        // yok. Doküman v1.0 gövdede gösteriyordu — mock ikisini de kabul eder
+        // (önce parametre), böylece hem uygulamanın yeni isteği hem eski
+        // doküman biçimi çalışır.
         app.MapGet("/aylik-yemek-listesi/get-kayit-list", async (
             HttpContext context,
             HbysMockTokenStore tokens) =>
@@ -57,9 +62,18 @@ public static class HbysMockEndpoints
             if (!IsAuthorized(context, tokens))
                 return HbysMockErrors.Envelope("AUTH-101", "Token geçersiz veya süresi dolmuş");
 
-            using var reader = new StreamReader(context.Request.Body);
-            var rawBody = await reader.ReadToEndAsync();
-            var (yil, ay) = ParseMenuFilter(rawBody);
+            string rawFilter = context.Request.Query["filters"].ToString();
+            if (string.IsNullOrWhiteSpace(rawFilter))
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                rawFilter = await reader.ReadToEndAsync();
+            }
+
+            // Gerçek HBYS filtre hiç gelmezse bunu döndürüyor (sahada görüldü).
+            if (string.IsNullOrWhiteSpace(rawFilter))
+                return HbysMockErrors.Envelope("----", "argument \"content\" is null");
+
+            var (yil, ay) = ParseMenuFilter(rawFilter);
 
             if (yil is null || ay is null)
                 return HbysMockErrors.Envelope("----", "Kayıt bulunamadı");

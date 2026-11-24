@@ -215,8 +215,19 @@ Kapatmak için: `flutter build appbundle --dart-define=DEMO_BYPASSES_NETWORK_GAT
 - `ios/Runner/Info.plist` → `NSLocationWhenInUseUsageDescription` +
   `NSLocalNetworkUsageDescription` (kuruldu).
 - `ios/Runner/Runner.entitlements` → `com.apple.developer.networking.wifi-info`
-  (oluşturuldu). **Xcode'da bağlanması gerekir:** Runner target → Signing &
-  Capabilities → **+ Capability → "Access WiFi Information"**.
+  (oluşturuldu ve `CODE_SIGN_ENTITLEMENTS` ile projeye **bağlı**). Apple
+  Developer portalında App ID'de (**com.kapari.eskhMenu**) **"Access WiFi
+  Information"** capability'si de işaretli olmalıdır; yoksa provisioning
+  profile bu entitlement'ı içermez ve imzalama patlar.
+- ⚠️ **KRİTİK — `ios/Podfile` makrosu:** permission_handler iOS'ta izinleri
+  derleme anında `GCC_PREPROCESSOR_DEFINITIONS` ile açar. Podfile'daki
+  `PERMISSION_LOCATION_WHENINUSE=1` silinirse konum izni
+  `UnknownPermissionStrategy`'ye düşer → iOS izni **hiç sormaz**, SSID/BSSID
+  okunamaz ve kapı gerçek personel için **asla açılmaz**. Podfile'ı silip
+  Flutter'a yeniden ürettirmeyin.
+- ⚠️ **iOS BSSID'deki baştaki sıfırları yutar** (`04:ca:ed:…` → `4:ca:ed:…`).
+  `WifiGuard.normalizeMac` ayırıcılı biçimde her okteti 2 haneye tamamlar
+  (`test/wifi_guard_mac_test.dart`). Bunu "sadeleştirmeyin".
 - ⚠️ Bu entitlement **ücretli Apple Developer hesabı** gerektirir. Yoksa SSID
   iOS'ta **daima `null`** döner; uygulama nazikçe reachability / bağlantı-tipi
   kontrolüne düşer (`WifiGuard` bunu zaten ele alır).
@@ -596,6 +607,25 @@ listesi). Ayrıntı: `store/README.md`.
 **Sürüm numarası:** `pubspec.yaml` → `version: 1.0.0+1`. `+` sonrası
 `versionCode`'dur ve her yüklemede ARTIRILMALIDIR.
 
+### 11.2 ⭐ App Store — Mac'siz derleme (Codemagic)
+
+Ekipte Mac yok; iOS build'i **Codemagic** bulut Mac'inde alınır (ücretsiz
+plan: ayda 500 dk macOS M2). Tarif repo kökündeki `../codemagic.yaml`
+(`ios-appstore` workflow'u, `working_directory: hastane_menu`). Tetikleme yok —
+Codemagic arayüzünden elle başlatılır; IPA'yı App Store Connect'e yükler,
+incelemeye gönderme elle yapılır. iOS build numarası TestFlight'taki son
+numaradan otomatik artırılır.
+
+Ön koşullar: App Store Connect API anahtarı Codemagic'e **"Kapari ASC"** adıyla
+eklenmiş olmalı; Apple Distribution sertifikası + App Store provisioning
+profile Codemagic "Code signing identities"e yüklenmiş olmalı; App ID'de
+"Access WiFi Information" açık olmalı (§4.5).
+
+> App Review hastane ağına giremez → inceleme notlarına demo hesabı
+> (`test` / `AppConfig.demoPassword`) ve engelleme ekranındaki **"Test girişi
+> ile devam et"** yolu yazılır (§4.2.1). `DEMO_BYPASSES_NETWORK_GATE=false`
+> ile derlenen bir build incelemeden geçemez.
+
 ---
 
 ## 12. Yeni Sayfa / Komponent Ekleme
@@ -618,7 +648,9 @@ listesi). Ayrıntı: `store/README.md`.
 - [x] Menü veri katmanı service deseni (HBYS yapısı) — §7, §15. ✅
 - [ ] Canlıya geçişte `AppConfig.useMockHbys = false` yap (mock → gerçek HBYS) — §15.
 - [ ] Intranet reachability probe'u varsayılan aktif et + sertleştir (§4.8).
-- [ ] iOS entitlement'ı Xcode'da bağla (ücretli hesap gerekir).
+- [x] iOS entitlement projeye bağlı (`CODE_SIGN_ENTITLEMENTS`). ✅ — portal'da
+      App ID capability'si ayrıca açılmalı (§4.5).
+- [ ] iOS ilk yayın (Codemagic → TestFlight → App Review) — §11.2.
 - [ ] Giriş akışını gerçek SMS/OTP + personel kartı API'sine bağla (`cardNo` → QR) — §14, §15.
 - [ ] Demo girişini (`test`/`AppConfig.demoPassword`, `isDemo`) gerçek API gelince kaldır/sınırla (§14).
 - [ ] Personel oturumunu güvenli depolamada kalıcı yap (şu an bellek içi).
