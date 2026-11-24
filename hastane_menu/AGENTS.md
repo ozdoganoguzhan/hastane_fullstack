@@ -616,10 +616,25 @@ Codemagic arayüzünden elle başlatılır; IPA'yı App Store Connect'e yükler,
 incelemeye gönderme elle yapılır. iOS build numarası TestFlight'taki son
 numaradan otomatik artırılır.
 
-Ön koşullar: App Store Connect API anahtarı Codemagic'e **"Kapari ASC"** adıyla
-eklenmiş olmalı; Apple Distribution sertifikası + App Store provisioning
-profile Codemagic "Code signing identities"e yüklenmiş olmalı; App ID'de
-"Access WiFi Information" açık olmalı (§4.5).
+**İmza otomatiktir** — Codemagic "Code signing identities"e elle sertifika/
+profil YÜKLENMEZ. Build içinde `app-store-connect fetch-signing-files
+--create` dağıtım sertifikasını ve App Store profilini Apple'dan çeker, yoksa
+oluşturur (capability değişince profil de kendiliğinden yenilenir).
+
+Ön koşullar:
+- App Store Connect API anahtarı Codemagic'e **"Kapari ASC"** adıyla eklenmiş
+  olmalı (rol: App Manager).
+- Codemagic uygulama ayarlarında `ios_signing` grubunda **Secure**
+  `CERTIFICATE_PRIVATE_KEY` değişkeni: dağıtım sertifikasının RSA private
+  key'i (PEM). Dosya: `C:\Users\Overl\kapari-ios-dist-key.pem` (repo DIŞINDA).
+  Kaybolursa felaket değil (Android keystore gibi değil): yeni key üretilir,
+  ilk build yeni sertifika oluşturur. Apple hesap başına 2-3 dağıtım
+  sertifikasına izin verir; dolarsa portaldan eskisi revoke edilir.
+- App ID'de "Access WiFi Information" açık olmalı (§4.5).
+
+> ⚠️ yaml'a `environment.ios_signing` bloğu EKLEMEYİN: o blok Codemagic'e
+> "elle yüklenmiş profil ara" der ve `No matching profiles found` ile
+> build başlamadan düşer (bir kez yaşandı).
 
 > App Review hastane ağına giremez → inceleme notlarına demo hesabı
 > (`test` / `AppConfig.demoPassword`) ve engelleme ekranındaki **"Test girişi

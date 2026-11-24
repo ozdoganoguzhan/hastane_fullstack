@@ -25,10 +25,15 @@ workflows:
       flutter: 3.41.6          # yereldeki sürümle aynı
       xcode: latest            # App Store güncel iOS SDK ile derlenmiş build ister
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kapari.eskhMenu
+      # ⭐ İmza OTOMATİK: sertifika + App Store profili build sırasında
+      # `fetch-signing-files --create` ile Apple'dan çekilir, yoksa oluşturulur.
+      # Codemagic "Code signing identities"e elle bir şey yüklemek GEREKMEZ.
+      # Tek ön koşul: bu gruptaki CERTIFICATE_PRIVATE_KEY (Secure) değişkeni —
+      # dağıtım sertifikasının RSA private key'i (PEM). AGENTS.md §11.2.
+      groups:
+        - ios_signing
       vars:
+        BUNDLE_ID: "com.kapari.eskhMenu"
         # App Store Connect → Uygulama → App Information → "Apple ID"
         # (10 haneli sayı). Build numarasını otomatik artırmak için.
         APP_STORE_APPLE_ID: "6838706954"
@@ -42,11 +47,17 @@ workflows:
           flutter analyze
           flutter test
 
+      - name: İmza — sertifika + profil (yoksa oluştur)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
       - name: CocoaPods
         script: cd ios && pod install
-
-      - name: İmza profillerini Xcode projesine uygula
-        script: xcode-project use-profiles
 
       - name: IPA derle
         script: |
