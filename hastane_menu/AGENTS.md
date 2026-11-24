@@ -636,9 +636,16 @@ oluşturur (capability değişince profil de kendiliğinden yenilenir).
 > "elle yüklenmiş profil ara" der ve `No matching profiles found` ile
 > build başlamadan düşer (bir kez yaşandı).
 
+**Mağaza görselleri + metinleri:** `store/appstore/` (README'de hangi dosyanın
+nereye yükleneceği yazılı; yeniden üretim: `tools/appstore-gorselleri.py`).
+
 > App Review hastane ağına giremez → inceleme notlarına demo hesabı
-> (`test` / `AppConfig.demoPassword`) ve engelleme ekranındaki **"Test girişi
-> ile devam et"** yolu yazılır (§4.2.1). `DEMO_BYPASSES_NETWORK_GATE=false`
+> (`test` / `AppConfig.demoPassword`) ve engelleme ekranındaki **"Yönetici
+> girişi"** yolu yazılır (§4.2.1).
+>
+> ⚠️ Kullanıcıya görünen metinlerde **platform adı geçmez** ("Android konum
+> izni istiyor" gibi): aynı metin iPhone'da da çıkar ve App Store başka
+> platform adı geçen uygulamayı reddeder (bir kez yakalandı). `DEMO_BYPASSES_NETWORK_GATE=false`
 > ile derlenen bir build incelemeden geçemez.
 
 ---

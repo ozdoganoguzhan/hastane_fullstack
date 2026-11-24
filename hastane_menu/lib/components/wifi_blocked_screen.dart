@@ -187,11 +187,13 @@ class WifiBlockedScreen extends StatelessWidget {
       'Ağ adı doğru görünüyor ancak bağlı olduğunuz erişim noktası hastaneye '
           'ait değil. Lütfen hastane içindeki resmi Wi-Fi noktasına bağlanın.',
     WifiGuardStatus.permissionDenied =>
-      'Hangi Wi-Fi ağına bağlı olduğunuzu okuyabilmemiz için Android konum '
+      // ⚠️ Platform adı YAZMAYIN ("Android ..."): aynı metin iPhone'da da
+      // çıkar ve App Store başka platform adı geçen uygulamayı reddeder.
+      'Hangi Wi-Fi ağına bağlı olduğunuzu okuyabilmemiz için telefonunuz konum '
           'izni istiyor. İzin verilmeden ağ adı görülemez.',
     WifiGuardStatus.locationOff =>
-      'İzin verilmiş olsa bile, konum servisleri kapalıyken Android ağ adını '
-          'gizler. Lütfen cihazınızın konum servislerini açın.',
+      'İzin verilmiş olsa bile, konum servisleri kapalıyken telefonunuz ağ '
+          'adını gizler. Lütfen cihazınızın konum servislerini açın.',
     // ⚠️ İzin VAR, konum AÇIK ama OS yine de vermiyor → kullanıcıdan
     // isteyebileceğimiz bir şey kalmadı; dürüst ol ve çıkış yolu sun.
     WifiGuardStatus.ssidUnavailable =>
